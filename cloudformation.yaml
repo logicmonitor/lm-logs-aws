@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Pushes logs from AWS to Logic Monitor logs endpoint.
+Mappings:
+  Constants:
+    LMForwarder:
+      Version: 1.0.0
+Parameters:
+  LMAccessId:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: The LM API tokens access ID
+  LMAccessKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: The LM API tokens access key
+  FunctionName:
+    Type: String
+    Default: LMLogsForwarder
+    Description: The name for the LM Forwarder lambda function.
+  LMIngestEnpoint:
+    Type: String
+    Default: "https://account.logicmonitor.com"
+    Description: The log ingestion endpoint on the LM host.
+    AllowedPattern : .*
+  FunctionMemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 3008
+    Description:  The memory size for the LM Forwarder lambda function
+  FunctionTimeoutInSeconds:
+    Type: Number
+    Default: 120
+    Description: The timeout for the LM Forwarder lambda function
+  LogGroupName:
+    Type: String
+    Default: "/aws/lambda/lm"
+    Description: The cloudwatch log group to fetch logs from.
+  LogGroupRetentionInDays:
+    Type: Number
+    Default: 90
+    Description: The CloudWatch log retention for logs sent to the specified log group
+  PermissionsBoundaryArn:
+    Type: String
+    Default: ""
+    Description: ARN for the Permissions Boundary Policy
+Resources:
+  Forwarder:
+    Type: AWS::Serverless::Function
+    DependsOn: ForwarderZip
+    Properties:
+      FunctionName:
+        Ref: FunctionName
+      Description: Pushes aws logs to Logic Monitor log endpoint.
+      Handler: main
+      MemorySize:
+        Ref: FunctionMemorySize
+      Runtime: go1.x
+      CodeUri: 
+        Bucket: !Ref ForwarderZipsBucket
+        Key: main.zip
+      Timeout:
+        Ref: FunctionTimeoutInSeconds
+      Environment:
+        Variables:
+          LM_HOST:
+            Ref: LMIngestEnpoint
+          LM_ACCESS_ID_ARN:
+            Ref: AccessIdSecret
+          LM_ACCESS_KEY_ARN:
+            Ref: AccessKeySecret
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:Get*
+              Resource: "*"
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource:
+                - Ref: AccessKeySecret
+                - Ref: AccessIdSecret
+  CloudWatchLogsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "Forwarder"
+      Action: lambda:InvokeFunction
+      Principal: !Sub "logs.${AWS::Region}.amazonaws.com"
+      SourceAccount: !Ref "AWS::AccountId"
+  S3Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "Forwarder"
+      Action: lambda:InvokeFunction
+      Principal: "s3.amazonaws.com"
+      SourceAccount: !Ref "AWS::AccountId"
+  LogSubscription:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn: 
+        - Forwarder
+    Properties: 
+      DestinationArn: !GetAtt Forwarder.Arn
+      FilterPattern: ""
+      LogGroupName:
+        Ref: LogGroupName
+  ForwarderZipsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+          ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  ForwarderZip:
+    Type: Custom::ForwarderZip
+    Properties:
+      ServiceToken: !GetAtt "ForwarderZipCopier.Arn"
+      DestZipsBucket: !Ref "ForwarderZipsBucket"
+      SourceZipUrl:
+        Fn::Sub:
+          - "https://lm-logs-forwarder.s3.amazonaws.com/source/${LMForwarderVersion}/lambda.zip"
+          - {
+              LMForwarderVersion:
+                !FindInMap [Constants, LMForwarder, Version],
+            }
+  ForwarderZipCopier:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Copies Logic Monitor Forwarder zip to the destination S3 bucket
+      Handler: index.handler
+      Runtime: python3.7
+      Timeout: 300
+      InlineCode: |
+        import json
+        import logging
+        import threading
+        import boto3
+        import urllib.request
+        import os
+        
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        
+        def send_cfn_resp(event, context, response_status):
+            resp_body = json.dumps({
+                'Status': response_status,
+                'Reason': f'See reasons in CloudWatch Logs - group: {context.log_group_name}, stream:{context.log_stream_name}',
+                'PhysicalResourceId': context.log_stream_name,
+                'StackId': event['StackId'],
+                'RequestId': event['RequestId'],
+                'LogicalResourceId': event['LogicalResourceId'],
+                'Data': {}
+            }).encode('utf-8')
+            req = urllib.request.Request(url=event['ResponseURL'], data=resp_body, method='PUT')
+            with urllib.request.urlopen(req) as f:
+                logger.info(f'Sent response to CloudFormation: {f.status}, {f.reason}')
+        def delete_zips(bucket):
+            s3 = boto3.resource('s3')
+            bucket = s3.Bucket(bucket)
+            bucket.objects.all().delete()
+        def copy_zip(source_zip_url, dest_zips_bucket):
+            s3 = boto3.client('s3')
+            filename = "main.zip"
+            with urllib.request.urlopen(source_zip_url) as data:
+                s3.upload_fileobj(data, dest_zips_bucket, filename)
+        def timeout(event, context):
+            logger.error('Execution is about to time out, sending failure response to CloudFormation')
+            send_cfn_resp(event, context, 'FAILED')
+        def handler(event, context):
+            timer = threading.Timer((context.get_remaining_time_in_millis()
+                        / 1000.00) - 0.5, timeout, args=[event, context])
+            timer.start()
+            logger.info(f'Received event: {json.dumps(event)}')
+            try:
+                source_zip_url = event['ResourceProperties']['SourceZipUrl']
+                dest_zips_bucket = event['ResourceProperties']['DestZipsBucket']
+                if event['RequestType'] == 'Delete':
+                    logger.info(f'Deleting : {dest_zips_bucket}')
+                    delete_zips(dest_zips_bucket)
+                else:
+                    logger.info(f'Copying zip from : {source_zip_url} to {dest_zips_bucket}')
+                    copy_zip(source_zip_url, dest_zips_bucket)
+            except Exception as e:
+                logger.exception(f'Exception when copying zip from {source_zip_url} to {dest_zips_bucket}')
+                send_cfn_resp(event, context, 'FAILED')
+            else:
+                send_cfn_resp(event, context, 'SUCCESS')
+            finally:
+                timer.cancel()
+      PermissionsBoundary:
+        Fn::If:
+          - SetPermissionsBoundary
+          - Ref: PermissionsBoundaryArn
+          - Ref: AWS::NoValue
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource:
+                - Fn::Join:
+                    - "/"
+                    - - Fn::GetAtt: "ForwarderZipsBucket.Arn"
+                      - "*"
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+              Resource:
+                - Fn::GetAtt: "ForwarderZipsBucket.Arn"
+      Environment:
+        Variables:
+          LM_FORWARDER_VERSION: !FindInMap [Constants, LMForwarder, Version]
+  AccessKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Logic Monitor Access Key
+      SecretString:
+        Ref: LMAccessKey
+  AccessIdSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Logic Monitor Access Id
+      SecretString:
+        Ref: LMAccessId
+Conditions:
+  SetPermissionsBoundary:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: PermissionsBoundaryArn
+          - ""
+Outputs:
+  LMForwarderArn:
+    Description: Logic Monitor Forwarder Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+        - Forwarder
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ForwarderArn
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required
+        Parameters:
+          - FunctionName
+          - LMIngestEnpoint
+          - LMAccessId
+          - LMAccessKey
+          - LogGroupName
+      - Label:
+          default: Lambda Function (Optional)
+        Parameters:
+          - FunctionMemorySize
+          - FunctionTimeoutInSeconds
+          - LogGroupRetentionInDays

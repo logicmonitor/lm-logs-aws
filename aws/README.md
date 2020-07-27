@@ -3,7 +3,7 @@ Cloud formation template to push logs from AWS to Logic Monitor. You need to hav
 To deploy you need.
 * LM Access ID
 * LM Access Key
-* KM Account Name
+* LM Account Name
 
 ### Deploying lambda using CloudFormation
 [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=lm-forwarder&templateURL=https://lm-logs-forwarder.s3.amazonaws.com/latest.yaml)

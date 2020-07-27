@@ -1,1 +1,1 @@
-# lm-logs
+# lm-logs (beta)

@@ -1,6 +1,5 @@
 # lm-logs-aws-integration (beta)
-Cloud formation template to push logs from AWS to Logic Monitor.
-For logs to forwarder you need to have basic infrastructure setup for that you need to deploy stack
+Cloud formation template to push logs from AWS to Logic Monitor. You need to have basic infrastructure setup for that you need to deploy stack
 To deploy you need.
 * LM Access ID
 * LM Access Key

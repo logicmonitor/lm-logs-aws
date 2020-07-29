@@ -20,7 +20,7 @@ Parameters:
     Type: String
     Default: LMLogsForwarder
     Description: The name for the LM Forwarder lambda function.
-  LMIngestEnpoint:
+  LMIngestEndpoint:
     Type: String
     Default: "https://account.logicmonitor.com"
     Description: The log ingestion endpoint on the LM host.

@@ -67,7 +67,7 @@ Resources:
       Environment:
         Variables:
           LM_HOST:
-            Ref: LMIngestEnpoint
+            Ref: LMIngestEndpoint
           LM_ACCESS_ID_ARN:
             Ref: AccessIdSecret
           LM_ACCESS_KEY_ARN:
@@ -258,7 +258,7 @@ Metadata:
           default: Required
         Parameters:
           - FunctionName
-          - LMIngestEnpoint
+          - LMIngestEndpoint
           - LMAccessId
           - LMAccessKey
           - LogGroupName

@@ -1,6 +1,7 @@
 # lm-logs-aws-integration (beta)
-Cloud formation template to push logs from AWS to Logic Monitor. You need to have basic infrastructure setup for that you need to deploy stack
-To deploy you need.
+This integration provides a CloudFormation template to forward logs from AWS CloudWatch to LogicMonitor.
+
+You will need to supply the following LogicMonitor credentials when configuring the CloudFormation stack:
 * LM Access ID
 * LM Access Key
 * LM Account Name
@@ -10,19 +11,22 @@ To deploy you need.
 
 ### Forwarding EC2 Instances logs
 
-Use this guide the set that up: [Configure the CloudWatch Logs Agent on EC2](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html)
-and send logs to `/aws/lambda/lm` log group.
+There are several ways to forward EC2 logs, including using the [CloudWatch Logs Agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html), Fluentd, and more. 
+* Send the logs to an existing log group, such as `/aws/lambda/lm`, to LogicMonitor.
+* The logstream name typically defaults to the instance id.
 
 ### Forwarding S3 bucket access logs
-By default, logging is disabled. When logging is enabled, logs are saved to a bucket in the same AWS Region as the source bucket.
-To enable access logging and send it to Logic Monitor, you must do the following:
-* Create a **target bucket** where you want to store access logs.
-* Go to the properties tab of the **source bucket**, click on **Server Access logs** and enable logging and select the **target bucket**.
-* Configure **trigger** on the **target bucket** which contains your access logs, and change the event type to **Object Created (All)** and select lam ** LMLogsForwarder**
+To forward S3 access logs to LogicMonitor, make sure that logging is enabled and that you are sending events to the 
+Lambda function forwarding logs to LogicMonitor. 
+
+1. Enable logging for the bucket that contains the access logs you want to forward.
+2. Under Advanced settings > Events, add a notification for “All object create events”. 
+3. Send to “Lambda Function” and choose “LMLogsForwarder” (or, whatever you named the Lambda function during stack creation).
 
 ### Forwarding ELB access logs
-* In the navigation pane, choose Load Balancers.Select your load balancer.
-* On the Description tab, choose Edit attributes.
-* On the Edit load balancer attributes page, do the following:
-* For Access logs, select Enable and type the name of the bucket in which logs with be dumped.
-* Configure **trigger** on the bucket which contains your access logs, and change the event type to **Object Created (All)** and select lam ** LMLogsForwarder**
+To send ELB access logs to LogicMonitor, enable access logging to an S3 bucket and configure the events to send to the LM log forwarder:
+
+1. In the EC2 navigation pane, choose Load Balancers and select your load balancer.
+2. Under Attributes > Access logs, click “Configure access logs”.
+3. Select “Enable access logs” and specify the S3 bucket to store the logs. (You can create one, if it doesn’t exist.)
+4. In S3, configure the bucket to forward events to the Lambda Function.

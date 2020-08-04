@@ -1,6 +1,9 @@
 # lm-logs-aws-integration (beta)
 This integration provides a CloudFormation template to forward logs from AWS CloudWatch to LogicMonitor.
 
+This CloudFormation template only deploys a log forwarder (lambda function) subscribed to a specific CloudWatch logs group for LogicMonitor. 
+Forwarding logs from individual AWS services, such as EC2, S3, or ELB, should be configured separately.
+
 You will need to supply the following LogicMonitor credentials when configuring the CloudFormation stack:
 * LM Access ID
 * LM Access Key
@@ -12,8 +15,7 @@ You will need to supply the following LogicMonitor credentials when configuring 
 ### Forwarding EC2 Instances logs
 
 There are several ways to forward EC2 logs, including using the [CloudWatch Logs Agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html), Fluentd, and more. 
-* Send the logs to an existing log group, such as `/aws/lambda/lm`, to LogicMonitor.
-* The logstream name typically defaults to the instance id.
+The logstream name typically defaults to the instance ID (this is expected by LogicMonitor).
 
 ### Forwarding S3 bucket access logs
 To forward S3 access logs to LogicMonitor, make sure that logging is enabled and that you are sending events to the 

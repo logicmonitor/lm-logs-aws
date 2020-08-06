@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -73,7 +74,7 @@ func (t *LMv1Token) String() string {
 	return builder.String()
 }
 
-var lmHost, lambdaName, awsRegion string
+var lmHost, lambdaName, awsRegion, scrubRegex string
 var accessID, accessKey string
 var keepTimestamp bool
 var debug bool
@@ -86,7 +87,6 @@ func getContentsFromS3Bucket(bucketName string, fileName string) string {
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(fileName),
 	})
-
 	handleFatalError("could not get s3 logs object", err)
 
 	return readCloserToString(s3ObjectOutput.Body)
@@ -188,10 +188,23 @@ func postBatch(lmBatch []*LMEvent) error {
 	return nil
 }
 
+func scrubBatchWithRegex(lmBatch []*LMEvent) {
+
+	if scrubRegex != "" {
+		reg := regexp.MustCompile(scrubRegex)
+		for _, event := range lmBatch {
+			log.Print(event.Message)
+			event.Message = reg.ReplaceAllString(event.Message, "")
+			log.Print(event.Message)
+		}
+	}
+}
+
 // Lambda handler
 func handler(request interface{}) (Response, error) {
 
 	lmBatch := processLogs(request)
+	scrubBatchWithRegex(lmBatch)
 
 	err := postBatch(lmBatch)
 	if err != nil {
@@ -300,7 +313,23 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []*LMEvent {
 
 	lmBatch := make([]*LMEvent, 0)
 	d, err := request.AWSLogs.Parse()
-	arn := fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
+	var arn string
+
+	if d.LogGroup == "RDSOSMetrics" {
+		rdsEnhancedEvent := make(map[string]interface{})
+		err := json.Unmarshal([]byte(d.LogEvents[0].Message), &rdsEnhancedEvent)
+		handleFatalError("RDSOSMetrics event parsing failed", err)
+		rdsInstance := rdsEnhancedEvent["instanceID"]
+		arn = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
+
+	} else if strings.Contains(d.LogGroup, "/aws/rds") {
+		re1, _ := regexp.Compile(`/aws/rds/(instance|cluster)/([^/]*)`)
+		result := re1.FindStringSubmatch(d.LogGroup)
+		rdsInstance := result[2]
+		arn = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
+	} else {
+		arn = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
+	}
 
 	handleFatalError("failed to parse cloudwatch event", err)
 
@@ -376,6 +405,7 @@ func main() {
 
 	accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY_ARN"))
 	accessID = getSecretValue(os.Getenv("LM_ACCESS_ID_ARN"))
+	scrubRegex = os.Getenv("LM_SCRUB_REGEX")
 
 	lmHost = os.Getenv("LM_HOST")
 	if lmHost == "" {

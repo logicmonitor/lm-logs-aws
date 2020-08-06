@@ -32,3 +32,10 @@ To send ELB access logs to LogicMonitor, enable access logging to an S3 bucket a
 2. Under Attributes > Access logs, click “Configure access logs”.
 3. Select “Enable access logs” and specify the S3 bucket to store the logs. (You can create one, if it doesn’t exist.)
 4. In S3, configure the bucket to forward events to the Lambda Function.
+
+### Forwarding RDS logs
+To send RDS logs to LogicMonitor, configure instance to send logs to cloudwatch, and create subscription filter to send to the LM log forwarder:
+
+1. Follow instructions to send [standard RDS logs to cloudwatch](https://aws.amazon.com/blogs/database/monitor-amazon-rds-for-mysql-and-mariadb-logs-with-amazon-cloudwatch/) or  [enhanced RDS to cloudwatch](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html)
+2. Go to Cloudwatch, select the desired log group of which you want to forward logs , under Actions > Create Lambda subscription filter
+3. In Create Lambda subscription filter , select “Lambda Function” and choose “LMLogsForwarder” (or, whatever you named the Lambda function during stack creation) and click Start streaming.

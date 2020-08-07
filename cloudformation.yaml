@@ -25,6 +25,10 @@ Parameters:
     Default: "https://account.logicmonitor.com"
     Description: The log ingestion endpoint on the LM host.
     AllowedPattern : .*
+  LMRegexScrub:
+    Type: String
+    Default: ""
+    Description: Regex to scrub text from logs.
   FunctionMemorySize:
     Type: Number
     Default: 1024
@@ -72,6 +76,8 @@ Resources:
             Ref: AccessIdSecret
           LM_ACCESS_KEY_ARN:
             Ref: AccessKeySecret
+          LM_SCRUB_REGEX:
+            Ref: LMRegexScrub
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -261,6 +267,7 @@ Metadata:
           - LMIngestEnpoint
           - LMAccessId
           - LMAccessKey
+          - LMRegexScrub
           - LogGroupName
       - Label:
           default: Lambda Function (Optional)

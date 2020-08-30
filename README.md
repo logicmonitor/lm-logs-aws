@@ -15,7 +15,7 @@ You will need to supply the following LogicMonitor credentials when configuring 
 ### Deploying lambda using Terraform
 
 **Sample configuration**
-```
+```tf
 variable "lm_access_id" {
   description = "Logic Monitor Access Id"
 }

@@ -12,6 +12,45 @@ You will need to supply the following LogicMonitor credentials when configuring 
 ### Deploying lambda using CloudFormation
 [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=lm-forwarder&templateURL=https://lm-logs-forwarder.s3.amazonaws.com/latest.yaml)
 
+### Deploying lambda using Terraform
+
+**Sample configuration**
+```
+variable "lm_access_id" {
+  description = "Logic Monitor Access Id"
+}
+
+variable "lm_access_key" {
+  description = "Logic Monitor Access Key"
+}
+
+variable "host_url" {
+  description = "Host Url"
+}
+
+variable "log_group_name" {
+  description = "Cloudwatch log group name"
+}
+
+# Logic Monitor Logs forwarder
+resource "aws_cloudformation_stack" "lm_forwarder" {
+  name         = "lm-forwarder"
+  capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+  parameters   = {
+    FunctionName              = "LMLogsForwarder"
+    LMAccessId                = var.lm_access_id
+    LMAccessKey               = var.lm_access_key
+    LMIngestEnpoint           = var.host_url
+    LMRegexScrub              = ""
+    LogGroupName              = var.log_group_name
+    LogGroupRetentionInDays   = 90
+    PermissionsBoundaryArn    = ""
+  }
+  template_url = "https://lm-logs-forwarder.s3.amazonaws.com/latest.yaml"
+}
+```
+`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'host_url=<host_url>' --var 'log_group_name=<log_group_name>'`
+
 ### Forwarding EC2 Instances logs
 
 There are several ways to forward EC2 logs, including using the [CloudWatch Logs Agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html), Fluentd, and more. 

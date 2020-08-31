@@ -19,9 +19,12 @@ jobs:
     - name: Dockerfile build & test
       run: docker build -t lambda .
     
+    - name: Configure AWS credentials from Test account
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: id
+        aws-secret-access-key: key
+        aws-region: us-east-1
+      
     - name: Validate cloudformtion template
-      env:
-        AWS_REGION: "us-west-1"
-        AWS_ACCESS_KEY_ID: "AWS_ACCESS_KEY_ID"
-        AWS_SECRET_ACCESS_KEY: "AWS_SECRET_ACCESS_KEY"
       run: aws cloudformation validate-template --template-body file://cloudformation.yaml

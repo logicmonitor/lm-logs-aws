@@ -20,7 +20,7 @@ jobs:
       run: docker build -t lambda .
     
     - name: Validate cloudformtion template
-      run: aws cloudformation validate-template --template-body file://cloudformation.yaml
       env:
         AWS_REGION: "us-west-1"
+      run: aws cloudformation validate-template --template-body file://cloudformation.yaml
 

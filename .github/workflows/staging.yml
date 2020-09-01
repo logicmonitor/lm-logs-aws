@@ -1,7 +1,7 @@
 name: Go
 
 on:
-  pull_request:
+  push:
     branches: [ master ]
 
 jobs:
@@ -26,3 +26,11 @@ jobs:
       
     - name: Validate cloudformtion template
       run: aws cloudformation validate-template --template-body file://cloudformation.yaml
+
+    - name: Deploying to staging
+      run: aws s3 cp cloudformation.yaml s3://lm-logs-forwarder/staging/latest.yaml
+      run: id=$(docker create lambda)
+      run: docker cp $id:/code/lambda.zip lambda.zip
+      run: docker rm -f $id
+      run: aws s3 cp lambda.zip s3://lm-logs-forwarder/staging/code/1.0.0/
+      run: rm lambda.zip

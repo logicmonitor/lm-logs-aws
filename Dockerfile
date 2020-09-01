@@ -7,5 +7,7 @@ WORKDIR /code
 COPY code/go.mod code/go.sum /code/
 RUN go mod download
 COPY code/* /code/
-RUN go build
-RUN go test 
+RUN go build -o main *.go \
+    && zip lambda.zip main \
+    go test
+VOLUME /code

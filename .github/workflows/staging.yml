@@ -6,8 +6,8 @@ on:
 
 jobs:
 
-  build:
-    name: Build
+  staging-deploy:
+    name: Staging-Deploy
     runs-on: ubuntu-latest
     steps:
 
@@ -23,7 +23,7 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-west-1
-      
+       
     - name: Validate cloudformtion template
       run: aws cloudformation validate-template --template-body file://cloudformation.yaml
 

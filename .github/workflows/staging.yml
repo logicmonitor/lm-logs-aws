@@ -30,9 +30,8 @@ jobs:
     - name: Deploying cloudformation.yaml to staging
       run: aws s3 cp cloudformation.yaml s3://lm-logs-forwarder/staging/latest.yaml
 
-    - name: Deploying lambda zip to staging
-        run: id=$(docker create lambda) \
-            && docker cp $id:/code/lambda.zip lambda.zip \
-            && docker rm -f $id \
-            && aws s3 cp lambda.zip s3://lm-logs-forwarder/staging/code/1.0.0/ \
-            && rm lambda.zip
+    - name: Creating lambda zip
+      run: id=$(docker create lambda) && docker cp $id:/code/lambda.zip lambda.zip && docker rm -f $id
+
+    - name: Deploying lambda to staging
+      run: aws s3 cp lambda.zip s3://lm-logs-forwarder/staging/code/1.0.0/ && rm lambda.zip

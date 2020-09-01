@@ -35,3 +35,6 @@ jobs:
 
     - name: Deploying lambda to staging
       run: aws s3 cp lambda.zip s3://lm-logs-forwarder/staging/code/1.0.0/ && rm lambda.zip
+
+    - name: Update lambda on QAPR
+      run: aws lambda update-function-code --function-name LMLogsForwarderQAUAT --s3-bucket lm-logs-forwarder --s3-key staging/code/1.0.0/ambda.zip

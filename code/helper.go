@@ -8,7 +8,6 @@ import (
 )
 
 func ExtractEnvironmentVariables() {
-	lambdaName = os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
 	awsRegion = os.Getenv("AWS_REGION")
 
 	accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY_ARN"))
@@ -37,7 +36,7 @@ func ExtractEnvironmentVariables() {
 
 func readCloserToString(body io.ReadCloser) string {
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(body)
+	_,_ = buf.ReadFrom(body)
 	return buf.String()
 }
 

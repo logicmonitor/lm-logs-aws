@@ -44,7 +44,7 @@ func TestParseEventTypeELB(t *testing.T) {
                 "configurationId": "N2FkMzIzZGMtNzFiZC00YmQ1LWJmODctZGM3NzNkYjE2NTYy",
                 "object": {
                     "eTag": "b115fb720ee4772071c1df3a04272574-1",
-                    "key": "AWSLogs/197152445587/elasticloadbalancing/us-west-1/2020/08/24/197152445587_elasticloadbalancing_us-west-1_elb-lambda-ahsan_20200824T1300Z_52.52.117.168_44ffpjs8.log",
+                    "key": "AWSLogs/123123123123/elasticloadbalancing/us-west-1/2020/08/24/197152445587_elasticloadbalancing_us-west-1_elb_20200824T1300Z_52.52.117.168_44ffpjs8.log",
                     "sequencer": "005F43BA1D9A322EE3",
                     "size": 761
                 },
@@ -58,7 +58,7 @@ func TestParseEventTypeELB(t *testing.T) {
 }`
 
 	var event map[string]interface{}
-	json.Unmarshal([]byte(eventJson), &event)
+	_ = json.Unmarshal([]byte(eventJson), &event)
 
 	assert.Equal(t, "elb", ParseEventType(event))
 }
@@ -82,7 +82,7 @@ func TestParseEventTypeS3(t *testing.T) {
             },
             "s3": {
                 "bucket": {
-                    "arn": "arn:aws:s3:::lm-image-logs",
+                    "arn": "arn:aws:s3:::bucket_name",
                     "name": "lm-image-logs",
                     "ownerIdentity": {
                         "principalId": "ATRBEOLXIUBLG"
@@ -98,14 +98,14 @@ func TestParseEventTypeS3(t *testing.T) {
                 "s3SchemaVersion": "1.0"
             },
             "userIdentity": {
-                "principalId": "AWS:AROAJBCKFEZ5YY3BVJ5VI:muhammad.ahsan@logicmonitor.com"
+                "principalId": "AWS:AROAJBCKFEZ5YY3BVJ5VI:x@x.com"
             }
         }
     ]
 }`
 
 	var event map[string]interface{}
-	json.Unmarshal([]byte(eventJson), &event)
+	_ = json.Unmarshal([]byte(eventJson), &event)
 
 	assert.Equal(t, "s3", ParseEventType(event))
 }

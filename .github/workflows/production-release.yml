@@ -1,13 +1,13 @@
 name: Go
 
-on:
-  push:
-    branches: [ master ]
+release:
+  types:
+    - created
 
 jobs:
 
-  staging-deploy:
-    name: Staging-Deploy
+  prod-deploy:
+    name: Production-Deploy
     runs-on: ubuntu-latest
     steps:
 
@@ -17,7 +17,7 @@ jobs:
     - name: Dockerfile build & test
       run: docker build -t lambda .
     
-    - name: Configure AWS credentials from Test account
+    - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -27,14 +27,11 @@ jobs:
     - name: Validate cloudformtion template
       run: aws cloudformation validate-template --template-body file://cloudformation.yaml
 
-    - name: Deploying cloudformation.yaml to staging
-      run: aws s3 cp cloudformation.yaml s3://lm-logs-forwarder/staging/latest.yaml
+    - name: Deploying cloudformation.yaml to production
+      run: aws s3 cp cloudformation.yaml s3://lm-logs-forwarder/latest.yaml
 
     - name: Creating lambda zip
       run: id=$(docker create lambda) && docker cp $id:/code/lambda.zip lambda.zip && docker rm -f $id
 
-    - name: Deploying lambda to staging
-      run: aws s3 cp lambda.zip s3://lm-logs-forwarder/staging/code/1.0.0/ && rm lambda.zip
-
-    - name: Update lambda on QAPR
-      run: aws lambda update-function-code --function-name LMLogsForwarderQAUAT --s3-bucket lm-logs-forwarder --s3-key staging/code/1.0.0/lambda.zip
+    - name: Deploying lambda to production
+      run: aws s3 cp lambda.zip s3://lm-logs-forwarder/source/1.0.0/ && rm lambda.zip

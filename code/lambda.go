@@ -13,7 +13,7 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var lmHost, lambdaName, awsRegion, scrubRegex string
+var lmHost, awsRegion, scrubRegex string
 var accessID, accessKey string
 var debug bool
 

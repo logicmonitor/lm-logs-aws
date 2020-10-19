@@ -24,7 +24,7 @@ variable "lm_access_key" {
   description = "LogicMonitor Access Key"
 }
 
-variable "company_name" {
+variable "lm_company_name" {
   description = "Host Url"
 }
 
@@ -36,14 +36,14 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
     FunctionName              = "LMLogsForwarder"
     LMAccessId                = var.lm_access_id
     LMAccessKey               = var.lm_access_key
-    LMCompanyName             = var.company_name
+    LMCompanyName             = var.lm_company_name
     LMRegexScrub              = ""
     PermissionsBoundaryArn    = ""
   }
   template_url = "https://lm-logs-forwarder.s3.amazonaws.com/latest.yaml"
 }
 ```
-`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'company_name=<company_name>'`
+`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'lm_company_name=<lm_company_name>'`
 
 ### Forwarding EC2 Instances logs
 

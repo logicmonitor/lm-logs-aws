@@ -4,8 +4,12 @@ Description: Pushes logs from AWS to Logic Monitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.0.0
+      Version: 1.1.0
 Parameters:
+	LMCompanyName:
+    Type: String
+    Default: ""
+    Description: The LogicMonitor acccount name.
   LMAccessId:
     Type: String
     NoEcho: true
@@ -20,11 +24,6 @@ Parameters:
     Type: String
     Default: LMLogsForwarder
     Description: The name for the LM Forwarder lambda function.
-  LMIngestEndpoint:
-    Type: String
-    Default: "https://account.logicmonitor.com"
-    Description: The log ingestion endpoint on the LM host.
-    AllowedPattern : .*
   LMRegexScrub:
     Type: String
     Default: ""
@@ -70,8 +69,8 @@ Resources:
         Ref: FunctionTimeoutInSeconds
       Environment:
         Variables:
-          LM_HOST:
-            Ref: LMIngestEndpoint
+					LM_COMPANY_NAME:
+						Ref: LMCompanyName
           LM_ACCESS_ID_ARN:
             Ref: AccessIdSecret
           LM_ACCESS_KEY_ARN:
@@ -264,7 +263,7 @@ Metadata:
           default: Required
         Parameters:
           - FunctionName
-          - LMIngestEndpoint
+          - LMCompanyName
           - LMAccessId
           - LMAccessKey
           - LMRegexScrub

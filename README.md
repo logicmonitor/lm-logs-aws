@@ -17,14 +17,14 @@ You will need to supply the following LogicMonitor credentials when configuring 
 **Sample configuration**
 ```tf
 variable "lm_access_id" {
-  description = "Logic Monitor Access Id"
+  description = "LogicMonitor Access Id"
 }
 
 variable "lm_access_key" {
-  description = "Logic Monitor Access Key"
+  description = "LogicMonitor Access Key"
 }
 
-variable "host_url" {
+variable "company_name" {
   description = "Host Url"
 }
 
@@ -40,7 +40,7 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
     FunctionName              = "LMLogsForwarder"
     LMAccessId                = var.lm_access_id
     LMAccessKey               = var.lm_access_key
-    LMIngestEndpoint          = var.host_url
+    LMCompanyName          		= var.company_name
     LMRegexScrub              = ""
     LogGroupName              = var.log_group_name
     LogGroupRetentionInDays   = 90

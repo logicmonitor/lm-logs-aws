@@ -95,16 +95,16 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	handleFatalError("failed to parse cloudwatch event", err)
 
 	for _, event := range d.LogEvents {
-
-		lmEv := ingest.Log{
-			Message:    event.Message,
-			ResourceID: map[string]string{"system.aws.arn": arn},
-			Timestamp:  time.Unix(0, event.Timestamp*1000000),
+		if event.Message != "" {
+			lmEv := ingest.Log{
+				Message:    event.Message,
+				ResourceID: map[string]string{"system.aws.arn": arn},
+				Timestamp:  time.Unix(0, event.Timestamp*1000000),
+			}
+			lmBatch = append(lmBatch, lmEv)
+		} else {
+			log.Fatalf("Cloudwatch has sent an empty message.")
 		}
-
-		lmBatch = append(lmBatch, lmEv)
-	}
-
-	return lmBatch
+		return lmBatch
 }
 

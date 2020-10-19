@@ -28,11 +28,7 @@ variable "company_name" {
   description = "Host Url"
 }
 
-variable "log_group_name" {
-  description = "Cloudwatch log group name"
-}
-
-# Logic Monitor Logs forwarder
+# LogicMonitor Logs forwarder
 resource "aws_cloudformation_stack" "lm_forwarder" {
   name         = "lm-forwarder"
   capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
@@ -42,14 +38,12 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
     LMAccessKey               = var.lm_access_key
     LMCompanyName             = var.company_name
     LMRegexScrub              = ""
-    LogGroupName              = var.log_group_name
-    LogGroupRetentionInDays   = 90
     PermissionsBoundaryArn    = ""
   }
   template_url = "https://lm-logs-forwarder.s3.amazonaws.com/latest.yaml"
 }
 ```
-`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'host_url=<host_url>' --var 'log_group_name=<log_group_name>'`
+`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'host_url=<host_url>'`
 
 ### Forwarding EC2 Instances logs
 

@@ -4,7 +4,7 @@ Description: Pushes logs from AWS to Logic Monitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.1.0
+      Version: 1.0.0
 Parameters:
 	LMCompanyName:
     Type: String
@@ -38,14 +38,6 @@ Parameters:
     Type: Number
     Default: 120
     Description: The timeout for the LM Forwarder lambda function
-  LogGroupName:
-    Type: String
-    Default: "/aws/lambda/lm"
-    Description: The cloudwatch log group to fetch logs from.
-  LogGroupRetentionInDays:
-    Type: Number
-    Default: 90
-    Description: The CloudWatch log retention for logs sent to the specified log group
   PermissionsBoundaryArn:
     Type: String
     Default: ""
@@ -106,15 +98,6 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: "s3.amazonaws.com"
       SourceAccount: !Ref "AWS::AccountId"
-  LogSubscription:
-    Type: AWS::Logs::SubscriptionFilter
-    DependsOn: 
-        - Forwarder
-    Properties: 
-      DestinationArn: !GetAtt Forwarder.Arn
-      FilterPattern: ""
-      LogGroupName:
-        Ref: LogGroupName
   ForwarderZipsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -267,10 +250,8 @@ Metadata:
           - LMAccessId
           - LMAccessKey
           - LMRegexScrub
-          - LogGroupName
       - Label:
           default: Lambda Function (Optional)
         Parameters:
           - FunctionMemorySize
           - FunctionTimeoutInSeconds
-          - LogGroupRetentionInDays

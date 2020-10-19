@@ -25,7 +25,7 @@ variable "lm_access_key" {
 }
 
 variable "lm_company_name" {
-  description = "Host Url"
+  description = "LogicMonitor Account Name"
 }
 
 # LogicMonitor Logs forwarder

@@ -43,7 +43,7 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
   template_url = "https://lm-logs-forwarder.s3.amazonaws.com/latest.yaml"
 }
 ```
-`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'host_url=<host_url>'`
+`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'company_name=<company_name>'`
 
 ### Forwarding EC2 Instances logs
 

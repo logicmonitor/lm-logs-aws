@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 	"regexp"
@@ -29,14 +30,16 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 	lmBatch := make([]ingest.Log, 0)
 
 	for _, message := range allMessages {
-
-		log := ingest.Log{
-			Message:    message,
-			ResourceID: map[string]string{"system.aws.arn": arn},
-			Timestamp:  request.Records[0].EventTime,
+		if event.Message != "" {
+			log := ingest.Log{
+				Message:    message,
+				ResourceID: map[string]string{"system.aws.arn": arn},
+				Timestamp:  request.Records[0].EventTime,
+			}
+			lmBatch = append(lmBatch, log)
+		} else {
+			log.Fatalf("ELB log message is empty")
 		}
-
-		lmBatch = append(lmBatch, log)
 	}
 	return lmBatch
 }
@@ -53,14 +56,18 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 
 	lmBatch := make([]ingest.Log, 0)
 
-	lmEv := ingest.Log{
-		Message:    content,
-		ResourceID: map[string]string{"system.aws.arn": arn},
-		Timestamp:  request.Records[0].EventTime,
+	for _, content := range originBucketName {
+		if event.Message != "" {
+			lmEv := ingest.Log{
+				Message:    content,
+				ResourceID: map[string]string{"system.aws.arn": arn},
+				Timestamp:  request.Records[0].EventTime,
+			}
+			lmBatch = append(lmBatch, lmEv)
+		} else {
+			log.Fatalf("S3 log message is empty")
+		}	
 	}
-
-	lmBatch = append(lmBatch, lmEv)
-
 	return lmBatch
 }
 
@@ -95,16 +102,17 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	handleFatalError("failed to parse cloudwatch event", err)
 
 	for _, event := range d.LogEvents {
-
-		lmEv := ingest.Log{
-			Message:    event.Message,
-			ResourceID: map[string]string{"system.aws.arn": arn},
-			Timestamp:  time.Unix(0, event.Timestamp*1000000),
+		if event.Message != "" {
+			lmEv := ingest.Log{
+				Message:    event.Message,
+				ResourceID: map[string]string{"system.aws.arn": arn},
+				Timestamp:  time.Unix(0, event.Timestamp*1000000),
+			}
+			lmBatch = append(lmBatch, lmEv)
+		} else {
+			log.Fatalf("Cloudwatch log message is empty")
 		}
-
-		lmBatch = append(lmBatch, lmEv)
 	}
-
 	return lmBatch
 }
 

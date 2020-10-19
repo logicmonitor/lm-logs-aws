@@ -40,7 +40,7 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
     FunctionName              = "LMLogsForwarder"
     LMAccessId                = var.lm_access_id
     LMAccessKey               = var.lm_access_key
-    LMCompanyName          		= var.company_name
+    LMCompanyName             = var.company_name
     LMRegexScrub              = ""
     LogGroupName              = var.log_group_name
     LogGroupRetentionInDays   = 90

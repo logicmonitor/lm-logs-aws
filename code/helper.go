@@ -12,17 +12,19 @@ func ExtractEnvironmentVariables() {
 
 	accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY_ARN"))
 	if accessKey == "" {
-		log.Fatalf("Missing LM_ACCESS_KEY_ARN env var")
+		log.Fatalf("missing LM_ACCESS_KEY_ARN env var")
 	}
 
 	accessID = getSecretValue(os.Getenv("LM_ACCESS_ID_ARN"))
 	if accessID == "" {
-		log.Fatalf("Missing LM_ACCESS_ID_ARN env var")
+		log.Fatalf("missing LM_ACCESS_ID_ARN env var")
 	}
 
 	lmHost = os.Getenv("LM_HOST")
-	if lmHost == "" {
-		log.Fatalf("Missing LM_HOST env var")
+	companyName = os.Getenv("LM_COMPANY_NAME")
+
+	if lmHost == "" && companyName == "" {
+		log.Fatalf("missing company name")
 	}
 
 	if os.Getenv("DEBUG") == "true" {
@@ -36,7 +38,7 @@ func ExtractEnvironmentVariables() {
 
 func readCloserToString(body io.ReadCloser) string {
 	buf := new(bytes.Buffer)
-	_,_ = buf.ReadFrom(body)
+	_, _ = buf.ReadFrom(body)
 	return buf.String()
 }
 

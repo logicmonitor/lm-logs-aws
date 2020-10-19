@@ -14,16 +14,23 @@ import (
 )
 
 var lmHost, awsRegion, scrubRegex string
-var accessID, accessKey string
+var accessID, accessKey, companyName string
 var debug bool
 
-func SendLogs(logs []ingest.Log) {
+func getCompany() string {
+	if companyName != "" {
+		return companyName
+	}
+
 	r := regexp.MustCompile(`https://([^\.]*).logicmonitor.com`)
 	result := r.FindStringSubmatch(lmHost)
-	company := result[1]
+	return result[1]
+}
+
+func SendLogs(logs []ingest.Log) {
 
 	lmIngest := ingest.Ingest{
-		CompanyName: company,
+		CompanyName: getCompany(),
 		AccessID:    accessID,
 		AccessKey:   accessKey,
 	}

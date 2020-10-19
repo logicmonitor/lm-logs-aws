@@ -6,7 +6,7 @@ Mappings:
     LMForwarder:
       Version: 1.0.0
 Parameters:
-	LMCompanyName:
+  LMCompanyName:
     Type: String
     Default: ""
     Description: The LogicMonitor acccount name.

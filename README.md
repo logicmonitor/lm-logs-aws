@@ -17,22 +17,18 @@ You will need to supply the following LogicMonitor credentials when configuring 
 **Sample configuration**
 ```tf
 variable "lm_access_id" {
-  description = "Logic Monitor Access Id"
+  description = "LogicMonitor Access Id"
 }
 
 variable "lm_access_key" {
-  description = "Logic Monitor Access Key"
+  description = "LogicMonitor Access Key"
 }
 
-variable "host_url" {
-  description = "Host Url"
+variable "lm_company_name" {
+  description = "LogicMonitor Account Name"
 }
 
-variable "log_group_name" {
-  description = "Cloudwatch log group name"
-}
-
-# Logic Monitor Logs forwarder
+# LogicMonitor Logs forwarder
 resource "aws_cloudformation_stack" "lm_forwarder" {
   name         = "lm-forwarder"
   capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
@@ -40,16 +36,14 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
     FunctionName              = "LMLogsForwarder"
     LMAccessId                = var.lm_access_id
     LMAccessKey               = var.lm_access_key
-    LMIngestEndpoint          = var.host_url
+    LMCompanyName             = var.lm_company_name
     LMRegexScrub              = ""
-    LogGroupName              = var.log_group_name
-    LogGroupRetentionInDays   = 90
     PermissionsBoundaryArn    = ""
   }
   template_url = "https://lm-logs-forwarder.s3.amazonaws.com/latest.yaml"
 }
 ```
-`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'host_url=<host_url>' --var 'log_group_name=<log_group_name>'`
+`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'lm_company_name=<lm_company_name>'`
 
 ### Forwarding EC2 Instances logs
 

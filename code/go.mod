@@ -1,11 +1,11 @@
-module stash.logicmonitor.com/projects/DEV/repos/log-ingest-forwarder.git
+module lm-logs-aws
 
 go 1.14
 
 require (
 	github.com/aws/aws-lambda-go v1.19.1
-	github.com/aws/aws-sdk-go v1.34.15
-	github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20200826085517-41257f764cfe
-	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/aws/aws-sdk-go v1.35.14
+	github.com/google/uuid v1.1.2 // indirect
+	github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20201026123256-fc4c3571fda0
 	github.com/stretchr/testify v1.6.1
 )

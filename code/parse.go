@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
+	"log"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []ingest.Log {
@@ -29,14 +31,16 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 	lmBatch := make([]ingest.Log, 0)
 
 	for _, message := range allMessages {
-
-		log := ingest.Log{
-			Message:    message,
-			ResourceID: map[string]string{"system.aws.arn": arn},
-			Timestamp:  request.Records[0].EventTime,
+		if message != "" {
+			log := ingest.Log{
+				Message:    message,
+				ResourceID: map[string]string{"system.aws.arn": arn},
+				Timestamp:  request.Records[0].EventTime,
+			}
+			lmBatch = append(lmBatch, log)
+		} else {
+			log.Fatalf("ELB has sent an empty message.")
 		}
-
-		lmBatch = append(lmBatch, log)
 	}
 	return lmBatch
 }
@@ -53,17 +57,18 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 
 	lmBatch := make([]ingest.Log, 0)
 
-	lmEv := ingest.Log{
-		Message:    content,
-		ResourceID: map[string]string{"system.aws.arn": arn},
-		Timestamp:  request.Records[0].EventTime,
+	if content != "" {
+		lmEv := ingest.Log{
+			Message:    content,
+			ResourceID: map[string]string{"system.aws.arn": arn},
+			Timestamp:  request.Records[0].EventTime,
+		}
+		lmBatch = append(lmBatch, lmEv)
+	} else {
+		log.Fatalf("S3 has sent an empty message.")
 	}
-
-	lmBatch = append(lmBatch, lmEv)
-
 	return lmBatch
 }
-
 
 func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
@@ -74,7 +79,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
 		err := json.Unmarshal([]byte(d.LogEvents[0].Message), &rdsEnhancedEvent)
-		handleFatalError("RDSOSMetrics event parsing failed",err)
+		handleFatalError("RDSOSMetrics event parsing failed", err)
 		rdsInstance := rdsEnhancedEvent["instanceID"]
 		arn = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 
@@ -103,8 +108,8 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 			}
 			lmBatch = append(lmBatch, lmEv)
 		} else {
-			log.Fatalf("Cloudwatch has sent an empty message.")
+			log.Fatalf("CloudWatch has sent an empty message.")
 		}
-		return lmBatch
+	}
+	return lmBatch
 }
-

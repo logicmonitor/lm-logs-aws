@@ -29,6 +29,10 @@ func getCompany() string {
 
 func SendLogs(logs []ingest.Log) {
 
+	if len(logs) == 0 {
+		return
+	}
+
 	lmIngest := ingest.Ingest{
 		CompanyName: getCompany(),
 		AccessID:    accessID,

@@ -96,13 +96,14 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
 	for _, event := range d.LogEvents {
 
-		lmEv := ingest.Log{
-			Message:    event.Message,
-			ResourceID: map[string]string{"system.aws.arn": arn},
-			Timestamp:  time.Unix(0, event.Timestamp*1000000),
+		if event.Message != "" {
+			lmEv := ingest.Log{
+				Message:    event.Message,
+				ResourceID: map[string]string{"system.aws.arn": arn},
+				Timestamp:  time.Unix(0, event.Timestamp*1000000),
+			}
+			lmBatch = append(lmBatch, lmEv)
 		}
-
-		lmBatch = append(lmBatch, lmEv)
 	}
 
 	return lmBatch

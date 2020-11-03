@@ -2,18 +2,19 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseEventTypeCloudWatch(t *testing.T) {
 
-		data := map[string]interface{}{"data": "H4sIAAAAAAAAAE1QyW7CMBT8FctnDH7enVtUlkurHuBSIVQ5xIVI2Wo7RQjx7zWtKvU6M+/NcsOdj9Gd/O46elzgZbkr319W2225WeEZHi69DxkGq0EyIaQ0OsPtcNqEYRozs3CXuGhdV9Vu0Xa/3DYF77pMNoQ6drQuX1e1rhm3kBVxquIxNGNqhn7dtMmHiIs9bjvyMYSLC7UP5NNNLpHn/OufmCyXopSvbPNGt2t8+PFaffk+Pe5vuKmzJZeK56SSKauMklpKyoAzQ3VGIPcwihnBGAUpKAWhuVFcGZpzpSZvkVyXa4G02nKrFAdgs7+N8vtyOiFGEaiC6oJr1IwEKAFBiTIEFIrxXO+BWmCHAj0Nfe+Pj+To2A7R16i6ImHnjMu54XPgCo1DSEgwrRXaj3m1KZ0P+H64fwN9VdQGmAEAAA=="}
-		event := map[string]interface{}{
-			"awslogs": data,
-		}
+	data := map[string]interface{}{"data": "H4sIAAAAAAAAAE1QyW7CMBT8FctnDH7enVtUlkurHuBSIVQ5xIVI2Wo7RQjx7zWtKvU6M+/NcsOdj9Gd/O46elzgZbkr319W2225WeEZHi69DxkGq0EyIaQ0OsPtcNqEYRozs3CXuGhdV9Vu0Xa/3DYF77pMNoQ6drQuX1e1rhm3kBVxquIxNGNqhn7dtMmHiIs9bjvyMYSLC7UP5NNNLpHn/OufmCyXopSvbPNGt2t8+PFaffk+Pe5vuKmzJZeK56SSKauMklpKyoAzQ3VGIPcwihnBGAUpKAWhuVFcGZpzpSZvkVyXa4G02nKrFAdgs7+N8vtyOiFGEaiC6oJr1IwEKAFBiTIEFIrxXO+BWmCHAj0Nfe+Pj+To2A7R16i6ImHnjMu54XPgCo1DSEgwrRXaj3m1KZ0P+H64fwN9VdQGmAEAAA=="}
+	event := map[string]interface{}{
+		"awslogs": data,
+	}
 
-		assert.Equal(t, "cloudwatch", ParseEventType(event))
+	assert.Equal(t, "cloudwatch", ParseEventType(event))
 }
 
 func TestParseEventTypeELB(t *testing.T) {

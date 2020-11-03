@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []ingest.Log {
@@ -64,7 +65,6 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 	return lmBatch
 }
 
-
 func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
 	lmBatch := make([]ingest.Log, 0)
@@ -74,7 +74,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
 		err := json.Unmarshal([]byte(d.LogEvents[0].Message), &rdsEnhancedEvent)
-		handleFatalError("RDSOSMetrics event parsing failed",err)
+		handleFatalError("RDSOSMetrics event parsing failed", err)
 		rdsInstance := rdsEnhancedEvent["instanceID"]
 		arn = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 
@@ -96,7 +96,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
 	for _, event := range d.LogEvents {
 
-		if event.Message != "" {
+		if strings.TrimSpace(event.Message) != "" {
 			lmEv := ingest.Log{
 				Message:    event.Message,
 				ResourceID: map[string]string{"system.aws.arn": arn},
@@ -108,4 +108,3 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
 	return lmBatch
 }
-

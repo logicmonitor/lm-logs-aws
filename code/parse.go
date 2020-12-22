@@ -106,7 +106,6 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	handleFatalError("failed to parse cloudwatch event", err)
 
 	for _, event := range d.LogEvents {
-
 		if strings.TrimSpace(event.Message) != "" {
 			lmEv := ingest.Log{
 				Message:    event.Message,

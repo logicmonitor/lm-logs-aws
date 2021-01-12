@@ -83,6 +83,7 @@ func ParseEventType(requests interface{}) string {
 
 func ExtractLogs(data interface{}) []ingest.Log {
 	logs := []ingest.Log{}
+	var err error
 	source := ParseEventType(data)
 
 	if debug {
@@ -100,7 +101,10 @@ func ExtractLogs(data interface{}) []ingest.Log {
 		logs = parseS3logs(s3Event, getContentsFromS3Bucket)
 	case "elb":
 		s3Event := convertToS3Event(data)
-		logs = parseELBlogs(s3Event, getContentsFromS3Bucket)
+		logs, err = parseELBlogs(s3Event, getContentsFromS3Bucket)
+		if err != nil {
+			fmt.Printf("WARN failed to parse elb logs %s\n", err)
+		}
 	}
 	return logs
 }

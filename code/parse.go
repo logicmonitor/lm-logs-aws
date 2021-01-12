@@ -11,23 +11,34 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []ingest.Log {
+func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
+	lmBatch := make([]ingest.Log, 0)
+
 	bucketName := request.Records[0].S3.Bucket.Name
 	key := request.Records[0].S3.Object.Key
 	content := getContentsFromS3Bucket(bucketName, key)
 
 	keySplit := strings.Split(key, "_")
-	firstPart := strings.Split(keySplit[0], "/")
 
-	accountId := firstPart[1]
-	region := firstPart[3]
+	re := regexp.MustCompile(`AWSLogs\/(.*)\/elasticloadbalancing`)
+	accountIDMatches := re.FindStringSubmatch(keySplit[0])
+	if len(accountIDMatches) < 2 {
+		return lmBatch, fmt.Errorf("failed to parse accountId for: %s", key)
+	}
+	accountId := accountIDMatches[1]
+
+	re = regexp.MustCompile(`\/elasticloadbalancing\/(.*?)\/`)
+	regionMatches := re.FindStringSubmatch(keySplit[0])
+	if len(regionMatches) < 2 {
+		return lmBatch, fmt.Errorf("failed to parse region for: %s", key)
+	}
+	region := regionMatches[1]
+
 	name := keySplit[3]
 	elbName := strings.ReplaceAll(name, ".", "/")
 	allMessages := strings.Split(content, "\n")
 
 	arn := fmt.Sprintf("arn:aws:elasticloadbalancing:%s:%s:loadbalancer/%s", region, accountId, elbName)
-
-	lmBatch := make([]ingest.Log, 0)
 
 	for _, message := range allMessages {
 
@@ -39,7 +50,7 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 
 		lmBatch = append(lmBatch, log)
 	}
-	return lmBatch
+	return lmBatch, nil
 }
 
 func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []ingest.Log {
@@ -95,7 +106,6 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	handleFatalError("failed to parse cloudwatch event", err)
 
 	for _, event := range d.LogEvents {
-
 		if strings.TrimSpace(event.Message) != "" {
 			lmEv := ingest.Log{
 				Message:    event.Message,

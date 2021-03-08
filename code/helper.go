@@ -34,6 +34,10 @@ func ExtractEnvironmentVariables() {
 	}
 
 	scrubRegex = os.Getenv("LM_SCRUB_REGEX")
+
+	logSource = "lm-logs-aws"
+
+	versionID = "0.0.1"
 }
 
 func readCloserToString(body io.ReadCloser) string {

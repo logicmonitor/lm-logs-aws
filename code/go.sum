@@ -17,6 +17,8 @@ github.com/jmespath/go-jmespath/internal/testify v1.5.1 h1:shLQSRRSCCPj3f2gpwzGw
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20201026123256-fc4c3571fda0 h1:MZlO6xE6VR0OVCpf1HOaNLbGUgzAAcf8NveRQWZqnrY=
 github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20201026123256-fc4c3571fda0/go.mod h1:CL/s31hARWqG3TsIX4wkBouv3wqbS/grm/jV+avXDQY=
+github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20210301071118-44b910823a84 h1:Optt1OctnFBWgZgH0hpYmWV6CtGgfU+VDyoOybnURiQ=
+github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20210301071118-44b910823a84/go.mod h1:CL/s31hARWqG3TsIX4wkBouv3wqbS/grm/jV+avXDQY=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

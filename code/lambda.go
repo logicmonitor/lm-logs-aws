@@ -38,7 +38,7 @@ func SendLogs(logs []ingest.Log) {
 		AccessID:    accessID,
 		AccessKey:   accessKey,
 		LogSource:   logSource,
-		VersionId:   versionID,
+		VersionID:   versionID,
 	}
 
 	// Send logs to Logic Monitor

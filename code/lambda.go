@@ -13,7 +13,7 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var lmHost, awsRegion, scrubRegex string
+var lmHost, awsRegion, scrubRegex, logSource, versionID string
 var accessID, accessKey, companyName string
 var debug bool
 
@@ -37,6 +37,8 @@ func SendLogs(logs []ingest.Log) {
 		CompanyName: getCompany(),
 		AccessID:    accessID,
 		AccessKey:   accessKey,
+		LogSource:   logSource,
+		VersionId:   versionID,
 	}
 
 	// Send logs to Logic Monitor

@@ -11,6 +11,8 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
+var resourceID string = "system.aws.arn"
+
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
 
@@ -99,6 +101,10 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		result := re1.FindStringSubmatch(d.LogGroup)
 		lambdaName := result[1]
 		arn = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName)
+	} else if strings.Contains(d.LogGroup, "/aws/ec2/networkInterface") {
+		splitLogStream := strings.Split(d.LogStream, "-")
+		arn = splitLogStream[0] + "-" + splitLogStream[1]
+		resourceID = "system.aws.networkInterfaceIds"
 	} else {
 		arn = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 	}
@@ -109,7 +115,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		if strings.TrimSpace(event.Message) != "" {
 			lmEv := ingest.Log{
 				Message:    event.Message,
-				ResourceID: map[string]string{"system.aws.arn": arn},
+				ResourceID: map[string]string{resourceID: arn},
 				Timestamp:  time.Unix(0, event.Timestamp*1000000),
 			}
 			lmBatch = append(lmBatch, lmEv)

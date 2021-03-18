@@ -214,3 +214,22 @@ func TestLambdaLogs(t *testing.T) {
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
+
+func TestEC2FlowLogs(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAAL3STUsDMRAG4L8Scq5pZvIxibeiVUREob1JkXWNZdHult1oEfG/O/W7Kniw7W2ZDG/m2cmjnKWuK6Zp/DBPclfuD8aDi5PhaDQ4HMqebBZ1arkMkcChtc4F4vJtMz1sm7s5n/SLRddPJfbrlBdNe3NU59ReF2V6bRvlNhUz7kt1taMJri/5CFEHrw2YnaIs0zxza3d32ZVtNc9VUx9Ut5zRyd1zmdtqOuUJJi9hw/tU52X9UVZXnGk4hKzXEYlII7jlmFyCgBGIoicTwJP2xiFopy0RxGg835crdudixgTw4CI5b0hr3Xv/HxyP4itb/CoQaFS0CiEqQBCgFRirSCFaAWgEx8YogAQI8uLzqo/P6MVgb294Nhanx/Kp9z8ZrVO2YlllvqnYty1ZWKfMOkWeMaBM/LkyG8luDxY3trIV5Rtqexuzep0whwr47SE/wxC+MdllmKcFm4LwPsSN22BjS1uFvrqWwuW+BI9Kf9smT89CzdnX1QUAAA==",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+
+	time := time.Unix(0, 1615975637000*1000000)
+	expectedLMEvent := ingest.Log{
+		Message:    "2 197152445587 eni-071fbace220860313 23.94.219.121 10.134.7.224 123 56399 17 1 76 1615975637 1615975696 ACCEPT OK",
+		Timestamp:  time,
+		ResourceID: map[string]string{"system.aws.networkInterfaceIds": "eni-071fbace220860313"},
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}

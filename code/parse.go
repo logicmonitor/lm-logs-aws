@@ -12,7 +12,7 @@ import (
 )
 
 var resourceProperty string = "system.aws.arn"
-var isEC2NetworkIntereface bool = false
+var isEC2NetworkInterface bool = false
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -103,7 +103,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		lambdaName := result[1]
 		resourceValue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName)
 	} else if strings.Contains(d.LogGroup, "/aws/ec2/networkInterface") {
-		isEC2NetworkIntereface = true
+		isEC2NetworkInterface = true
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 	}
@@ -112,7 +112,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
 	for _, event := range d.LogEvents {
 		if strings.TrimSpace(event.Message) != "" {
-			if isEC2NetworkIntereface && resourceValue == "" {
+			if isEC2NetworkInterface && resourceValue == "" {
 				splitEventMessage := strings.Split(event.Message, " ")
 				ec2InstanceID := splitEventMessage[0]
 				resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID)

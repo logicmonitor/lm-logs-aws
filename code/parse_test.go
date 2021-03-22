@@ -218,17 +218,17 @@ func TestLambdaLogs(t *testing.T) {
 func TestEC2FlowLogs(t *testing.T) {
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
-			Data: "H4sIAAAAAAAAAL3STUsDMRAG4L8Scq5pZvIxibeiVUREob1JkXWNZdHult1oEfG/O/W7Kniw7W2ZDG/m2cmjnKWuK6Zp/DBPclfuD8aDi5PhaDQ4HMqebBZ1arkMkcChtc4F4vJtMz1sm7s5n/SLRddPJfbrlBdNe3NU59ReF2V6bRvlNhUz7kt1taMJri/5CFEHrw2YnaIs0zxza3d32ZVtNc9VUx9Ut5zRyd1zmdtqOuUJJi9hw/tU52X9UVZXnGk4hKzXEYlII7jlmFyCgBGIoicTwJP2xiFopy0RxGg835crdudixgTw4CI5b0hr3Xv/HxyP4itb/CoQaFS0CiEqQBCgFRirSCFaAWgEx8YogAQI8uLzqo/P6MVgb294Nhanx/Kp9z8ZrVO2YlllvqnYty1ZWKfMOkWeMaBM/LkyG8luDxY3trIV5Rtqexuzep0whwr47SE/wxC+MdllmKcFm4LwPsSN22BjS1uFvrqWwuW+BI9Kf9smT89CzdnX1QUAAA==",
+			Data: "H4sIAAAAAAAAAL3RUUsjMRAA4L8S8ly3mcnMJPGtaE8OkRPaN5Fju6ayaHfL7mo5xP/ubEW04MPB0XubZIaZfJkXu8l9X97n5Z9ttqf2fLac/b6aLxazi7md2HbX5E6vIQVgJGKOQa8f2/uLrn3aamZa7vpprnDa5GHXdg8/myF367LK72WLocvlRutyU5+4AOuVphBdFOfBn5RVlbeDlvZPq77q6u1Qt82P+lF79Pb0xq73YVNusr3d95s/52YYUy+2vtO2XhxJAgdMCQlJILFEx8BBopCTSCDCTJQCMnrGyJAk6sihVvpQblQBAuJT8szOucnHl2h7fbOEVYCYGaG6W5MP5utfmG9ZhrEASAUiFOINuAI8FUHPZIi8IR4jMRCNSEzmc/xHSEBmdnY2v16aX5f2dfJv2nRc7YHvkP4uHc2qZeNFoyNrgzuyVkIRoFBmcof08bloENWKJsajQ+E/rvVAPRL3Vl2qob+A3r6+AaSOCSloBAAA",
 		},
 	}
 
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
-	time := time.Unix(0, 1615975637000*1000000)
+	time := time.Unix(0, 1616399355000*1000000)
 	expectedLMEvent := ingest.Log{
-		Message:    "2 197152445587 eni-071fbace220860313 23.94.219.121 10.134.7.224 123 56399 17 1 76 1615975637 1615975696 ACCEPT OK",
+		Message:    "i-067b718e521cdf437 197152445587 eni-071fbace220860313 52.119.221.63 10.134.7.224 443 45224 6 18 6689 1616399355 1616399414 ACCEPT OK",
 		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.networkInterfaceIds": "eni-071fbace220860313"},
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-067b718e521cdf437"},
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])

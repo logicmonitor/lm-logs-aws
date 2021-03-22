@@ -12,6 +12,7 @@ import (
 )
 
 var resourceProperty string = "system.aws.arn"
+var isEC2NetworkIntereface bool = false
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -82,40 +83,43 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
 	lmBatch := make([]ingest.Log, 0)
 	d, err := request.AWSLogs.Parse()
-	var resourcevalue string
+	var resourceValue string
 
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
 		err := json.Unmarshal([]byte(d.LogEvents[0].Message), &rdsEnhancedEvent)
 		handleFatalError("RDSOSMetrics event parsing failed", err)
 		rdsInstance := rdsEnhancedEvent["instanceID"]
-		resourcevalue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
+		resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 
 	} else if strings.Contains(d.LogGroup, "/aws/rds") {
 		re1, _ := regexp.Compile(`/aws/rds/(instance|cluster)/([^/]*)`)
 		result := re1.FindStringSubmatch(d.LogGroup)
 		rdsInstance := result[2]
-		resourcevalue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
+		resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 	} else if d.LogGroup != "/aws/lambda/lm" && strings.Contains(d.LogGroup, "/aws/lambda") {
 		re1, _ := regexp.Compile(`aws/lambda/(.*)`)
 		result := re1.FindStringSubmatch(d.LogGroup)
 		lambdaName := result[1]
-		resourcevalue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName)
+		resourceValue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName)
 	} else if strings.Contains(d.LogGroup, "/aws/ec2/networkInterface") {
-		resourceProperty = "system.aws.networkInterfaceIds"
-		splitLogStream := strings.Split(d.LogStream, "-")
-		resourcevalue = splitLogStream[0] + "-" + splitLogStream[1]
+		isEC2NetworkIntereface = true
 	} else {
-		resourcevalue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
+		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 	}
 
 	handleFatalError("failed to parse cloudwatch event", err)
 
 	for _, event := range d.LogEvents {
 		if strings.TrimSpace(event.Message) != "" {
+			if isEC2NetworkIntereface && resourceValue == "" {
+				splitEventMessage := strings.Split(event.Message, " ")
+				ec2InstanceID := splitEventMessage[0]
+				resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID)
+			}
 			lmEv := ingest.Log{
 				Message:    event.Message,
-				ResourceID: map[string]string{resourceProperty: resourcevalue},
+				ResourceID: map[string]string{resourceProperty: resourceValue},
 				Timestamp:  time.Unix(0, event.Timestamp*1000000),
 			}
 			lmBatch = append(lmBatch, lmEv)

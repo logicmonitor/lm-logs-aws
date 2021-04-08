@@ -107,8 +107,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	} else if strings.Contains(d.LogGroup, "/aws/natGateway/networkInterface") {
 		resourceProperty = "system.aws.networkInterfaceId"
 		splitLogStream := strings.Split(d.LogStream, "-")
-		logStream := splitLogStream[0] + "-" + splitLogStream[1]
-		resourceValue = logStream
+		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 	}

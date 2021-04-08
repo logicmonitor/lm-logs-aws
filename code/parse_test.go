@@ -233,3 +233,22 @@ func TestEC2FlowLogs(t *testing.T) {
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
+
+func TestNATFlowLogs(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAAL2Wb2/aMBDGv4qV1zT4zr6z3XeoZWiapk2Cd1M1ZdStopWAknSoqvrdd4FSAdW2F3Mi/og4jn0/7rnz85ytYtMU93HxtInZZXY9WUy+f57O55PZNBtl620VaxmG4IDQWiLvZPhhfT+r148buTMuts24KtpZ0cZt8TSuYrtd1z8/Vm2s74pl3M+et3UsVjI9VuUFMGi6o+KiWC7jppUZzeOPZlmXm7ZcVx/KB3m0yS6/ZUV2s3t6+itWbTfynJW3sohh7YJnSxoMQgiBGdEY0jaANj44MoHlI5dA4LwJ5INxLDu1pfC2xUpClzCcd06W0lqPDv+DLI/qGFcdh6xA52BsDjmwOVxQDl4rMB4VsWZQrEBZGXnb4PBT5qjJ1dX060J9+ZS9jP6Px/XLg2CDMs4DDwXk0wFhjgZOgSw565W1RnCYFUo40DtSSJkjRDxDAnL4igROYZCvnom8Tkf0KrRjvI5lT9VpjrB3HOgJZy/AHQ450oIjAMFy70CYAIgkegg5uJzsmeIEyGjkwfJjUufnhG2PMmwB2TQJkjebvBPUeX7YGLc7hFCZgNQ7EPUOhKTdcBXUr0/ogEC2sQOdqj6hTfhLh8MBBZfQJ0Aewikdy6GtyAY/WIISeoSzBLFEjNKwnRRQ199Aud7LJyQxCOxFXZR7zs07XyqC09bCYEAJLcIf+oFFdkPJLaQwCOcn6lvvlurhoU12SOgR3veD7tWJTYRn/01y8/Ibd82p5VIPAAA=",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+
+	time := time.Unix(0, 1617877079000*1000000)
+	expectedLMEvent := ingest.Log{
+		Message:    "2 197152445587 eni-16105f5a 10.134.1.163 10.134.5.180 1382 56061 6 1 40 1617877079 1617877138 ACCEPT OK",
+		Timestamp:  time,
+		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-16105f5a"},
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}

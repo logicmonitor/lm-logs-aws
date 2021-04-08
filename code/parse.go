@@ -104,6 +104,11 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		resourceValue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName)
 	} else if strings.Contains(d.LogGroup, "/aws/ec2/networkInterface") {
 		isEC2NetworkInterface = true
+	} else if strings.Contains(d.LogGroup, "/aws/natGateway/networkInterface") {
+		resourceProperty = "system.aws.networkInterfaceId"
+		splitLogStream := strings.Split(d.LogStream, "-")
+		logStream := splitLogStream[0] + "-" + splitLogStream[1]
+		resourceValue = logStream
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 	}

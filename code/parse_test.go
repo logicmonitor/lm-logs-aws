@@ -1,6 +1,8 @@
 package main
 
 import (
+	"compress/gzip"
+	"os"
 	"testing"
 	"time"
 
@@ -251,4 +253,58 @@ func TestNATFlowLogs(t *testing.T) {
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestParseCloudfrontlogs(t *testing.T) {
+	// Data preparation
+	time, _ := time.Parse(time.RFC3339, "2020-04-08T13:08:34+00:00")
+	record := events.S3EventRecord{
+		S3: events.S3Entity{
+			Bucket: events.S3Bucket{
+				Name: "CloudfrontLogBucket",
+			},
+			Object: events.S3Object{
+				Key: "Key",
+			},
+		},
+		EventTime: time,
+	}
+
+	records := make([]events.S3EventRecord, 0)
+
+	records = append(records, record)
+	s3Event := events.S3Event{
+		Records: records,
+	}
+
+	//Creating a gzip file
+	logMsg := "Test the Cloudfront logs"
+
+	f, _ := os.Create("file.gz")
+	defer os.Remove("file.gz")
+	w := gzip.NewWriter(f)
+	w.Write([]byte(logMsg))
+	w.Close()
+
+	//Reading from gzip file
+	f, _ = os.Open("file.gz")
+	result := make([]byte, 100)
+	f.Read(result)
+	defer f.Close()
+
+	var getContentsFromS3BucketMock = func(bucket string, key string) string {
+		assert.Equal(t, "CloudfrontLogBucket", bucket)
+		assert.Equal(t, "Key", key)
+		return string(result)
+	}
+
+	lmEvents := parseS3logs(s3Event, getContentsFromS3BucketMock)
+
+	expectedlmEvent := ingest.Log{
+		Message:    "Test the Cloudfront logs",
+		Timestamp:  time,
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::CloudfrontLogBucket"},
+	}
+
+	assert.Equal(t, expectedlmEvent, lmEvents[0])
 }

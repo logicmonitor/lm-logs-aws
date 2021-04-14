@@ -1,8 +1,12 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -57,14 +61,23 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 }
 
 func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []ingest.Log {
+	var arn string
 	bucketName := request.Records[0].S3.Bucket.Name
 	fileName := request.Records[0].S3.Object.Key
 
 	content := getContentsFromS3Bucket(bucketName, fileName)
 
-	originBucketName := strings.Split(content, " ")[1]
+	buff := make([]byte, 512)
+	buff = []byte(content)
+	filetype := http.DetectContentType(buff)
 
-	arn := fmt.Sprintf("arn:aws:s3:::%s", originBucketName)
+	if filetype != "application/x-gzip" {
+		originBucketName := strings.Split(content, " ")[1]
+		arn = fmt.Sprintf("arn:aws:s3:::%s", originBucketName)
+	} else {
+		content = decompressGzip(content)
+		arn = fmt.Sprintf("arn:aws:s3:::%s", bucketName)
+	}
 
 	lmBatch := make([]ingest.Log, 0)
 
@@ -131,4 +144,15 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	}
 
 	return lmBatch
+}
+
+func decompressGzip(content string) string {
+	rdata := strings.NewReader(content)
+	ioReaderContent, err := gzip.NewReader(rdata)
+	defer ioReaderContent.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	strContent, _ := ioutil.ReadAll(ioReaderContent)
+	return string(strContent)
 }

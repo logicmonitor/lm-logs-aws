@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -151,7 +150,7 @@ func decompressGzip(content string) string {
 	ioReaderContent, err := gzip.NewReader(rdata)
 	defer ioReaderContent.Close()
 	if err != nil {
-		log.Fatal(err)
+		handleFatalError("error while parsing gzip file", err)
 	}
 	strContent, _ := ioutil.ReadAll(ioReaderContent)
 	return string(strContent)

@@ -66,8 +66,7 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 
 	content := getContentsFromS3Bucket(bucketName, fileName)
 
-	buff := make([]byte, 512)
-	buff = []byte(content)
+	buff := []byte(content)
 	filetype := http.DetectContentType(buff)
 
 	if filetype != "application/x-gzip" {
@@ -148,10 +147,13 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 func decompressGzip(content string) string {
 	rdata := strings.NewReader(content)
 	ioReaderContent, err := gzip.NewReader(rdata)
-	defer ioReaderContent.Close()
+
 	if err != nil {
 		handleFatalError("error while parsing gzip file", err)
 	}
+
+	defer ioReaderContent.Close()
+
 	strContent, _ := ioutil.ReadAll(ioReaderContent)
 	return string(strContent)
 }

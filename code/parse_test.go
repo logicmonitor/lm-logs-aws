@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -283,13 +284,19 @@ func TestParseCloudfrontlogs(t *testing.T) {
 	f, _ := os.Create("file.gz")
 	defer os.Remove("file.gz")
 	w := gzip.NewWriter(f)
-	w.Write([]byte(logMsg))
+	_, err := w.Write([]byte(logMsg))
+	if err != nil {
+		fmt.Println("Error in writing log in file")
+	}
 	w.Close()
 
 	//Reading from gzip file
 	f, _ = os.Open("file.gz")
 	result := make([]byte, 100)
-	f.Read(result)
+	_, err = f.Read(result)
+	if err != nil {
+		fmt.Println("Error in reading from file")
+	}
 	defer f.Close()
 
 	var getContentsFromS3BucketMock = func(bucket string, key string) string {

@@ -24,6 +24,11 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 	key := request.Records[0].S3.Object.Key
 	content := getContentsFromS3Bucket(bucketName, key)
 
+	filetype := http.DetectContentType([]byte(content))
+	if filetype != "application/x-gzip" {
+		content = decompressGzip(content)
+	}
+
 	keySplit := strings.Split(key, "_")
 
 	re := regexp.MustCompile(`AWSLogs\/(.*)\/elasticloadbalancing`)

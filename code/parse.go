@@ -124,7 +124,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 		resoureProp[resourceProperty] = resourceValue
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
-		resoureProp["aws.accountid"] = d.Owner
+		resoureProp["system.aws.accountid"] = d.Owner
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)

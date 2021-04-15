@@ -66,8 +66,7 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 
 	content := getContentsFromS3Bucket(bucketName, fileName)
 
-	buff := []byte(content)
-	filetype := http.DetectContentType(buff)
+	filetype := http.DetectContentType([]byte(content))
 
 	if filetype != "application/x-gzip" {
 		originBucketName := strings.Split(content, " ")[1]

@@ -25,7 +25,7 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 	content := getContentsFromS3Bucket(bucketName, key)
 
 	filetype := http.DetectContentType([]byte(content))
-	if filetype != "application/x-gzip" {
+	if filetype == "application/x-gzip" {
 		content = decompressGzip(content)
 	}
 

@@ -15,7 +15,6 @@ import (
 )
 
 var resourceProperty string = "system.aws.arn"
-var isEC2NetworkInterface bool = false
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -95,6 +94,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	d, err := request.AWSLogs.Parse()
 	var resourceValue string
 	var resoureProp = make(map[string]string)
+	var isEC2NetworkInterface bool = false
 
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})

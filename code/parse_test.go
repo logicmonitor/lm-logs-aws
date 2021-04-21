@@ -333,6 +333,7 @@ func TestParseCloudtrailLogs(t *testing.T) {
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
+}
 
 func TestElbGzipLogs(t *testing.T) {
 	message := "2020-05-11T09:24:27.754579Z test 78.82.62.133:64107 172.40.0.85:80 0.00005 0.000852 0.000027 304 304 0 0 \"GET http://test-56808838.eu-west-1.elb.amazonaws.com:80/ HTTP/1.1\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36\" - -"

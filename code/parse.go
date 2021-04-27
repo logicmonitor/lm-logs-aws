@@ -14,8 +14,6 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var resourceProperty string = "system.aws.arn"
-
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
 
@@ -100,6 +98,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 	var resourceValue string
 	var resoureProp = make(map[string]string)
 	var isEC2NetworkInterface bool = false
+	var resourceProperty string = "system.aws.arn"
 
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
@@ -108,7 +107,6 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		rdsInstance := rdsEnhancedEvent["instanceID"]
 		resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 		resoureProp[resourceProperty] = resourceValue
-
 	} else if strings.Contains(d.LogGroup, "/aws/rds") {
 		re1, _ := regexp.Compile(`/aws/rds/(instance|cluster)/([^/]*)`)
 		result := re1.FindStringSubmatch(d.LogGroup)
@@ -128,9 +126,12 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		splitLogStream := strings.Split(d.LogStream, "-")
 		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 		resoureProp[resourceProperty] = resourceValue
+	} else if strings.Contains(d.LogGroup, "/aws/kinesisfirehose") {
+		splitLogGroup := strings.Split(d.LogGroup, "/")
+		resourceValue = splitLogGroup[3]
+		resoureProp[resourceProperty] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, d.Owner, resourceValue)
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
-		resoureProp["system.aws.accountid"] = d.Owner
-		resoureProp["system.cloud.category"] = "AWS/LMAccount"
+		return parseCloudTrailLogs(d)
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
@@ -146,6 +147,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 				resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID)
 				resoureProp[resourceProperty] = resourceValue
 			}
+
 			lmEv := ingest.Log{
 				Message:    event.Message,
 				ResourceID: resoureProp,
@@ -170,4 +172,42 @@ func decompressGzip(content string) string {
 
 	strContent, _ := ioutil.ReadAll(ioReaderContent)
 	return string(strContent)
+}
+
+func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
+	count := 0
+	lmBatch := make([]ingest.Log, 0)
+
+	for _, event := range data.LogEvents {
+		var resoureIDMap = make(map[string]string)
+		eventSourceRegex, _ := regexp.Compile(`("eventSource":")([^",]*)`)
+		eventSourceArray := eventSourceRegex.FindStringSubmatch(event.Message)
+		eventSource := eventSourceArray[2]
+
+		kinesisFirehoseRegex, _ := regexp.Compile(`("deliveryStreamName":"|"deliveryStreamName": "|:deliverystream/)([^/][^,][^"]*)`)
+		deliveryStreamArray := kinesisFirehoseRegex.FindStringSubmatch(event.Message)
+
+		kinesisDataStreamRegex, _ := regexp.Compile(`("streamName":"|"streamName": "|:stream/)([^/][^,][^"]*)`)
+		dataStreamArray := kinesisDataStreamRegex.FindStringSubmatch(event.Message)
+
+		count = count + 1
+		if eventSource == "firehose.amazonaws.com" && len(deliveryStreamArray) > 2 {
+			resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, data.Owner, deliveryStreamArray[2])
+		} else if eventSource == "kinesis.amazonaws.com" && len(dataStreamArray) > 2 {
+			resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:kinesis:%s:%s:stream/%s", awsRegion, data.Owner, dataStreamArray[2])
+		} else {
+			resoureIDMap["system.aws.accountid"] = data.Owner
+			resoureIDMap["system.cloud.category"] = "AWS/LMAccount"
+		}
+
+		lmEv := ingest.Log{
+			Message:    event.Message,
+			ResourceID: resoureIDMap,
+			Timestamp:  time.Unix(0, event.Timestamp*1000000),
+		}
+		lmBatch = append(lmBatch, lmEv)
+	}
+
+	return lmBatch
+
 }

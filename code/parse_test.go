@@ -427,10 +427,12 @@ func TestKinesisFirehoseErrorLog(t *testing.T) {
 
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
-	time := time.Date(2021, time.April, 26, 15, 16, 43, 219000000, time.Local)
+	//time := time.Date(2021, time.April, 26, 15, 16, 43, 219000000, time.Local)
+	r, _ := time.Parse(time.RFC3339, "2021-04-26T15:16:43.219Z")
+
 	expectedLMEvent := ingest.Log{
 		Message:    "Test Log for kinesis firehose",
-		Timestamp:  time,
+		Timestamp:  r,
 		ResourceID: map[string]string{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/dataFirehose"},
 	}
 
@@ -445,8 +447,9 @@ func TestKinesisDataStreamLog(t *testing.T) {
 	}
 
 	logs := parseCloudWatchLogs(cloudWatchEvent)
-
 	time := time.Date(2021, time.April, 27, 14, 25, 50, 324000000, time.Local)
+	fmt.Println("time.Local", time.Local)
+	fmt.Println("time.Location()", time.Location())
 	expectedLMEvent := ingest.Log{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/BhushanPuriPortal/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJV4QL3KY6\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU\",\"arn\":\"arn:aws:iam::197152445587:role/BhushanPuriPortal\",\"accountId\":\"197152445587\",\"userName\":\"BhushanPuriPortal\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-27T08:34:28Z\"}}},\"eventTime\":\"2021-04-27T08:39:15Z\",\"eventSource\":\"kinesis.amazonaws.com\",\"eventName\":\"ListTagsForStream\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.220.47.95\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"requestParameters\":{\"streamName\":\"kinesisTestSream\"},\"responseElements\":null,\"requestID\":\"f85f8e09-9fda-a448-a15e-41fa3263205e\",\"eventID\":\"d815bd8e-1016-46a6-8f68-608a42b9b7d3\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
 		Timestamp:  time,

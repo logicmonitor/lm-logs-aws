@@ -410,10 +410,8 @@ func TestParseKinesisFirehoseLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	localTime := time.Local
-
 	timeValue := time.Date(2021, time.April, 26, 11, 15, 15, 22800000, time.Local)
-
-	if strings.Contains(localTime.String(), "UTC") {
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
 		timeValue = time.Date(2021, time.April, 26, 5, 45, 15, 228000000, time.Local)
 	}
 
@@ -436,9 +434,8 @@ func TestKinesisFirehoseErrorLog(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	localTime := time.Local
-
 	timeValue := time.Date(2021, time.April, 26, 15, 16, 43, 219000000, time.Local)
-	if strings.Contains(localTime.String(), "UTC") {
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
 		timeValue = time.Date(2021, time.April, 26, 9, 46, 43, 219000000, time.Local)
 	}
 
@@ -461,9 +458,8 @@ func TestKinesisDataStreamLog(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	localTime := time.Local
-
 	timeValue := time.Date(2021, time.April, 27, 14, 25, 50, 324000000, time.Local)
-	if strings.Contains(localTime.String(), "UTC") {
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
 		timeValue = time.Date(2021, time.April, 27, 8, 55, 50, 324000000, time.Local)
 	}
 

@@ -453,7 +453,7 @@ func TestKinesisDataStreamLog(t *testing.T) {
 	localTime := time.Local
 	fmt.Println("localTime", localTime)
 	a := time.Date(2021, time.April, 27, 14, 25, 50, 324000000, time.Local)
-	if strings.Contains(localTime.String(), "+0000 UTC") {
+	if strings.Contains(localTime.String(), "UTC") {
 		a = time.Date(2021, time.April, 27, 8, 55, 50, 324000000, time.Local)
 	}
 

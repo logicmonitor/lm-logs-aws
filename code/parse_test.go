@@ -409,11 +409,17 @@ func TestParseKinesisFirehoseLogs(t *testing.T) {
 
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
-	loc, _ := time.LoadLocation("Local")
-	time := time.Date(2021, time.April, 26, 11, 15, 15, 228000000, loc)
+	localTime := time.Local
+
+	timeValue := time.Date(2021, time.April, 26, 11, 15, 15, 22800000, time.Local)
+
+	if strings.Contains(localTime.String(), "UTC") {
+		timeValue = time.Date(2021, time.April, 26, 5, 45, 15, 228000000, time.Local)
+	}
+
 	expectedLMEvent := ingest.Log{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/LogicMonitor_119/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJ5UWDCK2J\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4\",\"arn\":\"arn:aws:iam::197152445587:role/LogicMonitor_119\",\"accountId\":\"197152445587\",\"userName\":\"LogicMonitor_119\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-26T05:23:11Z\"}}},\"eventTime\":\"2021-04-26T05:30:50Z\",\"eventSource\":\"firehose.amazonaws.com\",\"eventName\":\"DescribeDeliveryStream\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.214.159.46\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"errorCode\":\"ResourceNotFoundException\",\"errorMessage\":\"Firehose firehosedelievery under account 197152445587 not found.\",\"requestParameters\":{\"deliveryStreamName\":\"firehosedelievery\"},\"responseElements\":null,\"requestID\":\"dd1d624c-66ab-9056-841d-300639f2b022\",\"eventID\":\"f25e9886-5059-4b07-90d1-d29a965c0a0f\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  time,
+		Timestamp:  timeValue,
 		ResourceID: map[string]string{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/firehosedelievery"},
 	}
 
@@ -429,12 +435,16 @@ func TestKinesisFirehoseErrorLog(t *testing.T) {
 
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
-	loc, _ := time.LoadLocation("Local")
-	time := time.Date(2021, time.April, 26, 15, 16, 43, 219000000, loc)
+	localTime := time.Local
+
+	timeValue := time.Date(2021, time.April, 26, 15, 16, 43, 219000000, time.Local)
+	if strings.Contains(localTime.String(), "UTC") {
+		timeValue = time.Date(2021, time.April, 26, 9, 46, 43, 219000000, time.Local)
+	}
 
 	expectedLMEvent := ingest.Log{
 		Message:    "Test Log for kinesis firehose",
-		Timestamp:  time,
+		Timestamp:  timeValue,
 		ResourceID: map[string]string{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/dataFirehose"},
 	}
 
@@ -451,15 +461,15 @@ func TestKinesisDataStreamLog(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	localTime := time.Local
-	fmt.Println("localTime", localTime)
-	a := time.Date(2021, time.April, 27, 14, 25, 50, 324000000, time.Local)
+
+	timeValue := time.Date(2021, time.April, 27, 14, 25, 50, 324000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") {
-		a = time.Date(2021, time.April, 27, 8, 55, 50, 324000000, time.Local)
+		timeValue = time.Date(2021, time.April, 27, 8, 55, 50, 324000000, time.Local)
 	}
 
 	expectedLMEvent := ingest.Log{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/BhushanPuriPortal/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJV4QL3KY6\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU\",\"arn\":\"arn:aws:iam::197152445587:role/BhushanPuriPortal\",\"accountId\":\"197152445587\",\"userName\":\"BhushanPuriPortal\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-27T08:34:28Z\"}}},\"eventTime\":\"2021-04-27T08:39:15Z\",\"eventSource\":\"kinesis.amazonaws.com\",\"eventName\":\"ListTagsForStream\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.220.47.95\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"requestParameters\":{\"streamName\":\"kinesisTestSream\"},\"responseElements\":null,\"requestID\":\"f85f8e09-9fda-a448-a15e-41fa3263205e\",\"eventID\":\"d815bd8e-1016-46a6-8f68-608a42b9b7d3\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  a,
+		Timestamp:  timeValue,
 		ResourceID: map[string]string{"system.aws.arn": "arn:aws:kinesis::197152445587:stream/kinesisTestSream"},
 	}
 

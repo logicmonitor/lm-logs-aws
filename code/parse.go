@@ -183,19 +183,32 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 		eventSourceArray := eventSourceRegex.FindStringSubmatch(event.Message)
 		eventSource := eventSourceArray[2]
 
+		accountLevelLog := true
+
 		if eventSource == "firehose.amazonaws.com" {
 			kinesisFirehoseRegex, _ := regexp.Compile(`("deliveryStreamName":"|"deliveryStreamName": "|:deliverystream/)([^/][^,][^"]*)`)
 			deliveryStreamArray := kinesisFirehoseRegex.FindStringSubmatch(event.Message)
 			if len(deliveryStreamArray) > 2 {
 				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, data.Owner, deliveryStreamArray[2])
+				accountLevelLog = false
 			}
 		} else if eventSource == "kinesis.amazonaws.com" {
 			kinesisDataStreamRegex, _ := regexp.Compile(`("streamName":"|"streamName": "|:stream/)([^/][^,][^"]*)`)
 			dataStreamArray := kinesisDataStreamRegex.FindStringSubmatch(event.Message)
 			if len(dataStreamArray) > 2 {
 				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:kinesis:%s:%s:stream/%s", awsRegion, data.Owner, dataStreamArray[2])
+				accountLevelLog = false
 			}
-		} else {
+		} else if eventSource == "ecs.amazonaws.com" {
+			ecsStreamRegex, _ := regexp.Compile(`("cluster":"|"cluster": "|:cluster/)([^/][^,][^"]*)`)
+			ecsStreamArray := ecsStreamRegex.FindStringSubmatch(event.Message)
+			if len(ecsStreamArray) > 2 {
+				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:ecs:%s:%s:cluster/%s", awsRegion, data.Owner, ecsStreamArray[2])
+				accountLevelLog = false
+			}
+		}
+
+		if accountLevelLog {
 			resoureIDMap["system.aws.accountid"] = data.Owner
 			resoureIDMap["system.cloud.category"] = "AWS/LMAccount"
 		}

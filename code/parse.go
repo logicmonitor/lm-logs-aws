@@ -175,7 +175,6 @@ func decompressGzip(content string) string {
 }
 
 func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
-	count := 0
 	lmBatch := make([]ingest.Log, 0)
 
 	for _, event := range data.LogEvents {
@@ -184,17 +183,18 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 		eventSourceArray := eventSourceRegex.FindStringSubmatch(event.Message)
 		eventSource := eventSourceArray[2]
 
-		kinesisFirehoseRegex, _ := regexp.Compile(`("deliveryStreamName":"|"deliveryStreamName": "|:deliverystream/)([^/][^,][^"]*)`)
-		deliveryStreamArray := kinesisFirehoseRegex.FindStringSubmatch(event.Message)
-
-		kinesisDataStreamRegex, _ := regexp.Compile(`("streamName":"|"streamName": "|:stream/)([^/][^,][^"]*)`)
-		dataStreamArray := kinesisDataStreamRegex.FindStringSubmatch(event.Message)
-
-		count = count + 1
-		if eventSource == "firehose.amazonaws.com" && len(deliveryStreamArray) > 2 {
-			resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, data.Owner, deliveryStreamArray[2])
-		} else if eventSource == "kinesis.amazonaws.com" && len(dataStreamArray) > 2 {
-			resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:kinesis:%s:%s:stream/%s", awsRegion, data.Owner, dataStreamArray[2])
+		if eventSource == "firehose.amazonaws.com" {
+			kinesisFirehoseRegex, _ := regexp.Compile(`("deliveryStreamName":"|"deliveryStreamName": "|:deliverystream/)([^/][^,][^"]*)`)
+			deliveryStreamArray := kinesisFirehoseRegex.FindStringSubmatch(event.Message)
+			if len(deliveryStreamArray) > 2 {
+				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, data.Owner, deliveryStreamArray[2])
+			}
+		} else if eventSource == "kinesis.amazonaws.com" {
+			kinesisDataStreamRegex, _ := regexp.Compile(`("streamName":"|"streamName": "|:stream/)([^/][^,][^"]*)`)
+			dataStreamArray := kinesisDataStreamRegex.FindStringSubmatch(event.Message)
+			if len(dataStreamArray) > 2 {
+				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:kinesis:%s:%s:stream/%s", awsRegion, data.Owner, dataStreamArray[2])
+			}
 		} else {
 			resoureIDMap["system.aws.accountid"] = data.Owner
 			resoureIDMap["system.cloud.category"] = "AWS/LMAccount"

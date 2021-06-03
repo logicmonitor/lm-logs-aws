@@ -130,6 +130,11 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		splitLogGroup := strings.Split(d.LogGroup, "/")
 		resourceValue = splitLogGroup[3]
 		resoureProp[resourceProperty] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, d.Owner, resourceValue)
+	} else if strings.Contains(d.LogGroup, "/aws/elb/networkInterface") {
+		resourceProperty = "system.aws.networkInterfaceId"
+		splitLogStream := strings.Split(d.LogStream, "-")
+		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
+		resoureProp[resourceProperty] = resourceValue
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
 		return parseCloudTrailLogs(d)
 	} else {

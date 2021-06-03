@@ -495,3 +495,27 @@ func TestECSLog(t *testing.T) {
 
 	assert.Equal(t, expectedLMEvent, logs[44])
 }
+
+func TestELBlowLogs(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAAK2QT2sCMRDFv0rI2T+TZJLselvsVkopLeitSInrVJbq7rIbK0X87h2VUsFCD+0hTPIyefN+2csNdV1Y0eyjITmSN9kse3nIp9NsksuerHcVtSyr1CurEa1NPMvrejVp623DN8Ow64a0Xgwriru6fburIrWvoaBz2zS2FDbcR1XZh8KBNgtXLCnx4Cj0Q1FQE7m12y66oi2bWNbVbblmj06OnmWQ85NN/k5VPCp7WS7ZzTiVeK+tA6VTo3zKudBodCk4MAa9TzC1YDAxFhAQ8Vgd8qRYMnEMGw6vnNZeGW8SAOh9/QTba3EJLH7MLvj1QCEvbbkmQsFAGRzwQYOwimWhtEqdcEIJRPE97XKbjcf500w83stD729w9l/hLmGuSE9YZ8QTHPwONz98As9B+hNrAgAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+
+	localTime := time.Local
+	timeValue := time.Date(2021, time.June, 03, 15, 18, 58, 000000000, time.Local)
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
+		timeValue = time.Date(2021, time.June, 03, 9, 48, 58, 000000000, time.Local)
+	}
+
+	expectedLMEvent := ingest.Log{
+		Message:    "2 197152445587 eni-0c6023b6cde8706ea 162.142.125.148 10.134.5.120 51125 12196 6 1 44 1622713738 1622713738 ACCEPT OK",
+		Timestamp:  timeValue,
+		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-0c6023b6cde8706ea"},
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}

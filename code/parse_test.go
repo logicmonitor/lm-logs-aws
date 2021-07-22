@@ -519,3 +519,27 @@ func TestELBlowLogs(t *testing.T) {
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
+
+func TestRDSFlowLogs(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAAG2Qy2rDMBBFf8VoHWO9LGmyM9QNXbRdOLsSiiLLwTR+ICk1JeTfO2kJbaEzm+HO5czjTAYfoz347cfsyZrcVdvq9bFummpTkxWZltEHlJk0RoLSwKhG+TgdNmE6zdgp7BKL0MZi9GmZwtvDmHzorPPftiYFbwf0+bHPKTjlulYp7oTpWtnm1jk/J7TG0z660M+pn8b7/oiMSNYvxJLdF6Z+92O6KmfSt0gTihsGXHKGMKpZKTiDUgKlnDHQknIhQVAqFIDkoI00TJTK4KTU48XJDrg8U1yB0LqkGKvbJxDPs98HZ//unuV/8od1Kw0F1J+ery8ll93lE2T4ipxrAQAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+
+	localTime := time.Local
+	timeValue := time.Date(2021, time.July, 22, 12, 39, 10, 000000000, time.Local)
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
+		timeValue = time.Date(2021, time.July, 22, 07, 9, 10, 000000000, time.Local)
+	}
+
+	expectedLMEvent := ingest.Log{
+		Message:    "2 148849679107 eni-09c6cfd662c38fd4d - - - - - - - 1626937750 1626937809 - NODATA",
+		Timestamp:  timeValue,
+		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-09c6cfd662c38fd4d"},
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}

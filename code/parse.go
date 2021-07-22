@@ -109,7 +109,6 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		resoureProp[resourceProperty] = resourceValue
 	} else if strings.Contains(d.LogGroup, "/aws/rds") {
 		splitLogGroup := strings.Split(d.LogGroup, "/")
-		fmt.Println(splitLogGroup)
 		if splitLogGroup[len(splitLogGroup)-1] == "networkInterface" {
 			resourceProperty = "system.aws.networkInterfaceId"
 			splitLogStream := strings.Split(d.LogStream, "-")

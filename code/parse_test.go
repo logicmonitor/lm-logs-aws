@@ -410,7 +410,7 @@ func TestParseKinesisFirehoseLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	localTime := time.Local
-	timeValue := time.Date(2021, time.April, 26, 11, 15, 15, 22800000, time.Local)
+	timeValue := time.Date(2021, time.April, 26, 11, 15, 15, 228000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
 		timeValue = time.Date(2021, time.April, 26, 5, 45, 15, 228000000, time.Local)
 	}

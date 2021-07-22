@@ -412,7 +412,7 @@ func TestParseKinesisFirehoseLogs(t *testing.T) {
 	localTime := time.Local
 	timeValue := time.Date(2021, time.April, 26, 11, 15, 15, 228000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
-		timeValue = time.Date(2021, time.April, 26, 5, 45, 15, 228000000, time.Local)
+		timeValue = timeValue.UTC()
 	}
 
 	expectedLMEvent := ingest.Log{
@@ -436,7 +436,7 @@ func TestKinesisFirehoseErrorLog(t *testing.T) {
 	localTime := time.Local
 	timeValue := time.Date(2021, time.April, 26, 15, 16, 43, 219000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
-		timeValue = time.Date(2021, time.April, 26, 9, 46, 43, 219000000, time.Local)
+		timeValue = timeValue.UTC()
 	}
 
 	expectedLMEvent := ingest.Log{
@@ -460,7 +460,7 @@ func TestKinesisDataStreamLog(t *testing.T) {
 	localTime := time.Local
 	timeValue := time.Date(2021, time.April, 27, 14, 25, 50, 324000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
-		timeValue = time.Date(2021, time.April, 27, 8, 55, 50, 324000000, time.Local)
+		timeValue = timeValue.UTC()
 	}
 
 	expectedLMEvent := ingest.Log{
@@ -484,7 +484,7 @@ func TestECSLog(t *testing.T) {
 	localTime := time.Local
 	timeValue := time.Date(2021, time.April, 30, 14, 17, 41, 663000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
-		timeValue = time.Date(2021, time.April, 30, 8, 47, 41, 663000000, time.Local)
+		timeValue = timeValue.UTC()
 	}
 
 	expectedLMEvent := ingest.Log{
@@ -508,7 +508,7 @@ func TestELBlowLogs(t *testing.T) {
 	localTime := time.Local
 	timeValue := time.Date(2021, time.June, 03, 15, 18, 58, 000000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
-		timeValue = time.Date(2021, time.June, 03, 9, 48, 58, 000000000, time.Local)
+		timeValue = timeValue.UTC()
 	}
 
 	expectedLMEvent := ingest.Log{
@@ -532,7 +532,7 @@ func TestRDSFlowLogs(t *testing.T) {
 	localTime := time.Local
 	timeValue := time.Date(2021, time.July, 22, 12, 39, 10, 000000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
-		timeValue = time.Date(2021, time.July, 22, 07, 9, 10, 000000000, time.Local)
+		timeValue = timeValue.UTC()
 	}
 
 	expectedLMEvent := ingest.Log{

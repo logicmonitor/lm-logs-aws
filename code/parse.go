@@ -108,11 +108,19 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 		resoureProp[resourceProperty] = resourceValue
 	} else if strings.Contains(d.LogGroup, "/aws/rds") {
-		re1, _ := regexp.Compile(`/aws/rds/(instance|cluster)/([^/]*)`)
-		result := re1.FindStringSubmatch(d.LogGroup)
-		rdsInstance := result[2]
-		resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
-		resoureProp[resourceProperty] = resourceValue
+		splitLogGroup := strings.Split(d.LogGroup, "/")
+		if splitLogGroup[len(splitLogGroup)-1] == "networkInterface" {
+			resourceProperty = "system.aws.networkInterfaceId"
+			splitLogStream := strings.Split(d.LogStream, "-")
+			resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
+			resoureProp[resourceProperty] = resourceValue
+		} else {
+			re1, _ := regexp.Compile(`/aws/rds/(instance|cluster)/([^/]*)`)
+			result := re1.FindStringSubmatch(d.LogGroup)
+			rdsInstance := result[2]
+			resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
+			resoureProp[resourceProperty] = resourceValue
+		}
 	} else if d.LogGroup != "/aws/lambda/lm" && strings.Contains(d.LogGroup, "/aws/lambda") {
 		re1, _ := regexp.Compile(`aws/lambda/(.*)`)
 		result := re1.FindStringSubmatch(d.LogGroup)

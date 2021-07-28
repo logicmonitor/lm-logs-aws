@@ -121,3 +121,46 @@ To send Lambda logs to LogicMonitor, go to cloudwatch and find lambda's log grou
 7. Provide Event name. In Destination's Lambda function tab select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation).
 8. Click Save changes button.
 9. You will be able to see logs at logicmonitor website against S3 bucket mentioned in 3rd step.
+
+### Send Logs from Kinesis Data Stream:
+As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be implemented. No separate process is needed for Kinesis Data Stream.
+
+### Send Logs from Kinesis Firehose:
+There are 2 kinds of logs in Kinesis Firehose API logs which will be collected from Cloudtrail and second are error logs. 
+
+For API logs you don't have to do anything extra other than Cloudtrail steps. 
+
+For Error logging:
+
+1. While Creating delivery system in Configure System step, select Enabled radio button in Error logging segment.
+2. A log group in Cloudwatch would be created with delivery system's name. Format of name would be /aws/kinesisfirehose/<Delivery system name given>.
+3. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+4. Logs will start to propagate through lambda to LogIngest. You will be able to see logs against Kinesis Firehose delivery system's name.
+
+### Send Logs from ECS:
+As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be implemented. No separate process is needed for ECS.
+
+### Send ELB flow logs
+1.Add below lines in permissions of lambda's role policy:
+       "logs:CreateLogGroup",
+       "logs:CreateLogStream",
+       "logs:PutLogEvents"
+2. Add below line in the Trust Relationship part of the role in the Service tag:
+       "vpc-flow-logs.amazonaws.com"
+3. A Log group in cloud watch should be created with name /aws/elb/networkInterface
+4. Use your ELB name to search in Network interfaces page. Select that Network interface row and create a flow log. In create flow log Destination log group should be /aws/elb/networkInterface and IAM role should be the role created in 1st and 2nd step.
+6. Go to /aws/elb/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+7. Logs will start to propagate through lambda to LogIngest.
+
+### Send ELB flow logs
+1.Add below lines in permissions of lambda's role policy:
+       "logs:CreateLogGroup",
+       "logs:CreateLogStream",
+       "logs:PutLogEvents"
+2. Add below line in the Trust Relationship part of the role in the Service tag:
+       "vpc-flow-logs.amazonaws.com"
+3. A Log group in cloud watch should be created with name /aws/rds/networkInterface
+4. Use the your RDS instance private IP address to search in Network interfaces page. Select that Network interface row and create a flow log. In create flow log Destination log group should be /aws/rds/networkInterface and IAM role should be the role created in 1st and 2nd step.
+5. Go to /aws/rds/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+6. Logs will start to propagate through lambda to LogIngest.
+

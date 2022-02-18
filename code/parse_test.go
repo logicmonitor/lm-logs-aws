@@ -543,3 +543,27 @@ func TestRDSFlowLogs(t *testing.T) {
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
+
+func TestFargateLog(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAAH3SS2/bMAwA4L8S+Nyk4ksUcyu2pqed0p2GopBjuTCaF2ynxVD0v4/JMGDdksIXixTET6Teqk0ZhvxU7n/uSzWvvt7c3zx+u10ub+5uq6tq97otvYeBU2KLahDUw+vd012/O+w9c51fh+s29095LL8zy7EveeOptt9tpu36ULbjtO7G6fOhLrOX3M9802y1246589MH/z1sx9I/NqXNh/X4eFpP21YlNyVrxiZKSzVLHepmldu2ZiyQAVMgjK2J1ivQhoiaOgOrNGw1H6s4aDjUw6rv9mO32y66tdcZqvmPKlcPJ+zti+uOkbeqa9xMMaZEaoRECsEXkgxO1xdRQ9BggckAlRFVIxCnGJJXGjtv5Zg33hWILBApoRLD1Z8W+/GCYT5Z9N1kUeoJpEmQueg86OT7/ZcJBsTq/epfCUs0PhICRg7Ry2JgDyEnEwLExMEEWZUloFyQJGL8KIFzkvSZJKYACjEoR4qmJpYEOEZNKUVvGBpZPN3ZP8YLEr8RfZTgOYl9JrFAoBbEmC0EBp+Hp5BMQRwDUYRjUjgOjZnOSyj8J6EzEgifSBiOQzGBUwv8KaI/FxKL4hOz48iiEEUMvof8oVyQ+CvijxI+J4G/JA/vvwBKpFa1vAMAAA==",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+
+	localTime := time.Local
+	timeValue := time.Date(2022, time.February, 18, 11, 27, 07, 341000000, time.Local)
+	if strings.Contains(localTime.String(), "UT C") { //Test case is running at system with time.Local as UTC
+		timeValue = time.Date(2022, time.February, 18, 5, 57, 07, 341000000, time.Local)
+	}
+
+	expectedLMEvent := ingest.Log{
+		Message:    "520: Fri Feb 18 05:57:07 UTC 2022",
+		Timestamp:  timeValue,
+		ResourceID: map[string]string{"system.aws.accountid": "148849679107", "system.cloud.category": "AWS/LMAccount"},
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}

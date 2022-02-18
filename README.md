@@ -164,3 +164,82 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 5. Go to /aws/rds/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
 6. Logs will start to propagate through lambda to LogIngest.
 
+### Send Fargate logs
+Fargate logs of ECS:
+
+1. Go to Task defination that you are using with your service in ECS cluster
+
+2. It should have "awslogs-group" as key and "/aws/fargate" as value in Container definition section of Task definition. If you are adding to already existing task definition than create new revision of Task definition and update Service in ECS cluster. Else if creating a new Task defination then make sure to attach it to Service in ECS cluster.
+
+3. Go to /aws/fargate log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+
+4. Logs will start to propagate through lambda to LogIngest.
+
+Fargate logs from EKS:
+
+1. Create a dedicated Kubernetes namespace named aws-observability.
+
+2. Save the following contents to a file named aws-observability-namespace.yaml on your computer. The value for name must be aws-observability and the aws-observability: enabled label is required.
+
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: aws-observability
+  labels:
+    aws-observability: enabled
+
+
+3. Create the namespace.
+
+Save the following contents to a file named aws-logging-cloudwatch-configmap.yaml. Replace region-code with the AWS Region. The parameters under [OUTPUT] are required.
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: aws-logging
+  namespace: aws-observability
+data:
+  output.conf: |
+    [OUTPUT]
+        Name cloudwatch_logs
+        Match   *
+        region region-code
+        log_group_name fluent-bit-cloudwatch
+        log_stream_prefix from-fluent-bit-
+        auto_create_group true
+        log_key log
+ 
+  parsers.conf: |
+    [PARSER]
+        Name crio
+        Format Regex
+        Regex ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>P|F) (?<log>.*)$
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+   
+  filters.conf: |
+     [FILTER]
+        Name parser
+        Match *
+        Key_name log
+        Parser crio
+
+4. Apply the manifest to your cluster.
+
+  kubectl apply -f aws-logging-cloudwatch-configmap.yaml
+
+5. Download the CloudWatch IAM policy to your computer. You can also view the policy on GitHub.
+  curl -o permissions.json https://raw.githubusercontent.com/aws-samples/amazon-eks-fluent-logging-examples/mainline/examples/fargate/cloudwatchlogs/permissions.json
+
+6. Create an IAM policy from the policy file you downloaded in a previous step.
+     aws iam create-policy --policy-name eks-fargate-logging-policy --policy-document file://permissions.json
+
+7. Attach the IAM policy to the pod execution role specified for your Fargate profile. Replace 111122223333 with your account ID.
+  aws iam attach-role-policy \
+--policy-arn arn:aws:iam::111122223333:policy/eks-fargate-logging-policy \
+--role-name your-pod-execution-role
+
+8. Go to /aws/fargate log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+
+
+9. Logs will start to propagate through lambda to LogIngest.

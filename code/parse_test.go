@@ -555,7 +555,7 @@ func TestFargateLog(t *testing.T) {
 
 	localTime := time.Local
 	timeValue := time.Date(2022, time.February, 18, 11, 27, 07, 341000000, time.Local)
-	if strings.Contains(localTime.String(), "UT C") { //Test case is running at system with time.Local as UTC
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
 		timeValue = time.Date(2022, time.February, 18, 5, 57, 07, 341000000, time.Local)
 	}
 

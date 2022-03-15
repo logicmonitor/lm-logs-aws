@@ -1,4 +1,4 @@
-# lm-logs-aws-integration (beta)
+# lm-logs-aws-integration
 This integration provides a CloudFormation template to forward logs from AWS CloudWatch to LogicMonitor.
 
 This CloudFormation template only deploys a log forwarder (lambda function) subscribed to a specific CloudWatch logs group for LogicMonitor. 

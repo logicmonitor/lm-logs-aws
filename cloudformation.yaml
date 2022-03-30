@@ -4,7 +4,7 @@ Description: Pushes logs from AWS to Logic Monitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.0.0
+      Version: 1.0.6
 Parameters:
   LMCompanyName:
     Type: String
@@ -117,7 +117,7 @@ Resources:
       DestZipsBucket: !Ref "ForwarderZipsBucket"
       SourceZipUrl:
         Fn::Sub:
-          - "https://lm-logs-forwarder.s3.amazonaws.com/source/${LMForwarderVersion}/lambda.zip"
+          - "https://logicmonitor-logs-forwarder.s3.amazonaws.com/source/${LMForwarderVersion}/lambda.zip"
           - {
               LMForwarderVersion:
                 !FindInMap [Constants, LMForwarder, Version],

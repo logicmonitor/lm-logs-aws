@@ -117,7 +117,7 @@ Resources:
       DestZipsBucket: !Ref "ForwarderZipsBucket"
       SourceZipUrl:
         Fn::Sub:
-          - "https://lm-logs-forwarder.s3.amazonaws.com/source/${LMForwarderVersion}/lambda.zip"
+          - "https://lm-logs-forwarder-v2.s3.amazonaws.com/source/${LMForwarderVersion}/lambda.zip"
           - {
               LMForwarderVersion:
                 !FindInMap [Constants, LMForwarder, Version],

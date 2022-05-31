@@ -141,14 +141,15 @@ For Error logging:
 As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be implemented. No separate process is needed for ECS.
 
 ### Send ELB flow logs
+ELB flow logs to ECS:
 
-  1.Add below lines in permissions of lambda's role policy:
+1. Add below lines in permissions of lambda's role policy:
        "logs:CreateLogGroup",
        "logs:CreateLogStream",
        "logs:PutLogEvents"
 
 2. Add below line in the Trust Relationship part of the role in the Service tag:
-       "vpc-flow-logs.amazonaws.com"
+      "vpc-flow-logs.amazonaws.com"
 
 3. A Log group in cloud watch should be created with name /aws/elb/networkInterface
 
@@ -159,8 +160,9 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 6. Logs will start to propagate through lambda to LogIngest.
 
 ### Send RDS logs
+RDS logs to ECS:
 
-  1.Add below lines in permissions of lambda's role policy:
+1. Add below lines in permissions of lambda's role policy:
        "logs:CreateLogGroup",
        "logs:CreateLogStream",
        "logs:PutLogEvents"

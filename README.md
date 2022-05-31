@@ -142,7 +142,7 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 
 ### Send ELB flow logs
 
-1.Add below lines in permissions of lambda's role policy:
+  1.Add below lines in permissions of lambda's role policy:
        "logs:CreateLogGroup",
        "logs:CreateLogStream",
        "logs:PutLogEvents"
@@ -160,7 +160,7 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 
 ### Send RDS logs
 
-1.Add below lines in permissions of lambda's role policy:
+  1.Add below lines in permissions of lambda's role policy:
        "logs:CreateLogGroup",
        "logs:CreateLogStream",
        "logs:PutLogEvents"

@@ -141,27 +141,41 @@ For Error logging:
 As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be implemented. No separate process is needed for ECS.
 
 ### Send ELB flow logs
-1.Add below lines in permissions of lambda's role policy:
+ELB flow logs to ECS:
+
+1. Add below lines in permissions of lambda's role policy:
        "logs:CreateLogGroup",
        "logs:CreateLogStream",
        "logs:PutLogEvents"
+
 2. Add below line in the Trust Relationship part of the role in the Service tag:
-       "vpc-flow-logs.amazonaws.com"
+      "vpc-flow-logs.amazonaws.com"
+
 3. A Log group in cloud watch should be created with name /aws/elb/networkInterface
+
 4. Use your ELB name to search in Network interfaces page. Select that Network interface row and create a flow log. In create flow log Destination log group should be /aws/elb/networkInterface and IAM role should be the role created in 1st and 2nd step.
-6. Go to /aws/elb/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
-7. Logs will start to propagate through lambda to LogIngest.
+
+5. Go to /aws/elb/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+
+6. Logs will start to propagate through lambda to LogIngest.
 
 ### Send RDS logs
-1.Add below lines in permissions of lambda's role policy:
+RDS logs to ECS:
+
+1. Add below lines in permissions of lambda's role policy:
        "logs:CreateLogGroup",
        "logs:CreateLogStream",
        "logs:PutLogEvents"
+
 2. Add below line in the Trust Relationship part of the role in the Service tag:
        "vpc-flow-logs.amazonaws.com"
+
 3. A Log group in cloud watch should be created with name /aws/rds/networkInterface
+
 4. Use your RDS instance private IP address to search in Network interfaces page. Select that Network interface row and create a flow log. In create flow log Destination log group should be /aws/rds/networkInterface and IAM role should be the role created in 1st and 2nd step.
+
 5. Go to /aws/rds/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+
 6. Logs will start to propagate through lambda to LogIngest.
 
 ### Send Fargate logs

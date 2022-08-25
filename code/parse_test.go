@@ -162,6 +162,25 @@ func TestParseCloudWatchlogs(t *testing.T) {
 	assert.Equal(t, expectedLMEvent, lmEvents[0])
 }
 
+func TestParseCloudWatchlogsEks(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAADWQzWrDMBCEX0XoXMerf9ulh0DT0ENPaU9NKLKtuCa2ZSS5IZS+ezehFQuCnZ0d9vumo4vRdu71Mjta0cf16/rjZbPbrbcbekf9eXIB27wAKYUCKDhge/DdNvhlRiW355i7U8ztKcMvQynmzbDEhMbb5C4FZ0ccPS21y2Lz6dplcCGTzjJQdaFKbnQrRFkKwxk/cq1Aa2XQHZc6NqGfU++np37AlZFW7xRzhnH2IdmBHm4Zmy83pav2TfsWo4QBxbguGWghgSkjFWYVEgzeoQyXjCvDGBdSG45ppsQeCI6ZqUciyY54HNOaSaGFLgDg7p8Urn9GDoowWYGuoFhJyTUAuT3GyNE2yYfLqvOVMOZA9vRtsvXgSPLk/3wy+/aeTB6rdZHY4EhwXX+l5trrYPp05A/jPTnbPvVTt6dX28P+j+QFxTFvPDqmmCExXcpGH2U2qXoc95T+HH5+AUTjfWfgAQAA",
+		},
+	}
+
+	lmEvents := parseCloudWatchLogs(cloudWatchEvent)
+
+	time := time.Unix(0, 1661436368000*1000000)
+	expectedLMEvent := ingest.Log{
+		Message:    "I0825 14:06:08.442600      11 factory.go:377] \"Unable to schedule pod; no nodes are registered to the cluster; waiting\" pod=\"kube-system/coredns-657694c6f4-n5bmm\"",
+		Timestamp:  time,
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:lambda::280443500820:function:ak-eks-logs"},
+	}
+
+	assert.Equal(t, expectedLMEvent, lmEvents[0])
+}
+
 func TestRDSLogs(t *testing.T) {
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{

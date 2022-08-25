@@ -148,6 +148,12 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
 		return parseCloudTrailLogs(d)
+	} else if d.LogGroup != "/aws/eks/" {
+		re1, _ := regexp.Compile(`aws/eks/(.*)/cluster`)
+		result := re1.FindStringSubmatch(d.LogGroup)
+		eksName := result[1]
+		resourceValue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, eksName)
+		resoureProp[resourceProperty] = resourceValue
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue

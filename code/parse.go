@@ -144,7 +144,6 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 		resoureProp[resourceProperty] = resourceValue
 	} else if strings.Contains(d.LogGroup, "/aws/fargate") {
-		fmt.Println("##################d.Owner = ", d.Owner)
 		resoureProp["system.aws.accountid"] = d.Owner
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {

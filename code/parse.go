@@ -14,6 +14,8 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
+var s3Regex, _ = regexp.Compile(`("ARN":")(?P<arn>[^/][^,][^"]*)`)
+
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
 
@@ -231,7 +233,6 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 				accountLevelLog = false
 			}
 		} else if eventSource == "s3.amazonaws.com" {
-			s3Regex, _ := regexp.Compile(`("ARN":")(?P<arn>[^/][^,][^"]*)`)
 			s3RegexArray := s3Regex.FindStringSubmatch(event.Message)
 			s3Arn := s3Regex.SubexpIndex("arn")
 

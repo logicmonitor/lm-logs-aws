@@ -237,7 +237,6 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 
 			if len(s3RegexArray) > 0 && s3Arn != 0 {
 				resoureIDMap["system.aws.arn"] = fmt.Sprintf(s3RegexArray[s3Arn])
-				fmt.Println("arn:aws:s3:%s:%s:arn/%s", awsRegion, data.Owner, s3RegexArray[s3Arn])
 				accountLevelLog = false
 			}
 		}

@@ -1,4 +1,4 @@
-FROM golang:1.14-alpine as base
+FROM golang:1.15-alpine as base
 ENV GOOS linux
 ENV GOARCH amd64
 ENV CGO_ENABLED 0

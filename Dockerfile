@@ -8,9 +8,9 @@ COPY code/go.mod code/go.sum /code/
 RUN go mod download
 COPY code/* /code/
 
-# FROM base as build
-# RUN go build -o main *.go \
-#     && zip lambda.zip main
+FROM base as build
+RUN go build -o main *.go \
+    && zip lambda.zip main
 
 FROM base as test
 RUN go test
@@ -18,7 +18,7 @@ RUN wget -O- -nv 'https://raw.githubusercontent.com/golangci/golangci-lint/maste
     | sh -s -- -b "$(go env GOPATH)/bin" 'v1.49.0'
 RUN golangci-lint run .
 
-# FROM alpine as release
-# WORKDIR /code
-# COPY --from=build /code/lambda.zip /code/
-# VOLUME /code
+FROM alpine as release
+WORKDIR /code
+COPY --from=build /code/lambda.zip /code/
+VOLUME /code

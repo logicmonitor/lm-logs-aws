@@ -15,7 +15,7 @@ RUN go build -o main *.go \
 FROM base as test
 RUN go test
 RUN wget -O- -nv 'https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh' \
-    | sh -s -- -b "$(go env GOPATH)/bin" 'v1.30.0'
+    | sh -s -- -b "$(go env GOPATH)/bin" 'v1.19.0'
 RUN golangci-lint run .
 
 FROM alpine as release

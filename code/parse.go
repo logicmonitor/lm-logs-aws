@@ -14,6 +14,8 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
+var s3Regex, _ = regexp.Compile(`("ARN":")(?P<arn>[^/][^,][^"]*)`)
+
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
 
@@ -223,9 +225,19 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 			}
 		} else if eventSource == "ecs.amazonaws.com" {
 			ecsStreamRegex, _ := regexp.Compile(`("cluster":"|"cluster": "|:cluster/)([^/][^,][^"]*)`)
+
 			ecsStreamArray := ecsStreamRegex.FindStringSubmatch(event.Message)
+
 			if len(ecsStreamArray) > 2 {
 				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:ecs:%s:%s:cluster/%s", awsRegion, data.Owner, ecsStreamArray[2])
+				accountLevelLog = false
+			}
+		} else if eventSource == "s3.amazonaws.com" {
+			s3RegexArray := s3Regex.FindStringSubmatch(event.Message)
+			s3Arn := s3Regex.SubexpIndex("arn")
+
+			if len(s3RegexArray) > 0 && s3Arn != 0 {
+				resoureIDMap["system.aws.arn"] = fmt.Sprintf(s3RegexArray[s3Arn])
 				accountLevelLog = false
 			}
 		}

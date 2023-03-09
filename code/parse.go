@@ -15,6 +15,7 @@ import (
 )
 
 var s3Regex, _ = regexp.Compile(`("ARN":")(?P<arn>[^/][^,][^"]*)`)
+var lambdaRegex, _ = regexp.Compile(`("functionName":")(?P<functionName>[^/][^,][^"]*)|("resource":")(?P<resource>[^/][^,][^"]*)|("functionVersion":")(?P<functionVersion>[^/][^,][^"]*)`)
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -194,12 +195,12 @@ func decompressGzip(content string) string {
 
 func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 	lmBatch := make([]ingest.Log, 0)
-
 	for _, event := range data.LogEvents {
 		var resoureIDMap = make(map[string]string)
 		eventSourceRegex, _ := regexp.Compile(`("eventSource":")([^",]*)`)
 		eventSourceArray := eventSourceRegex.FindStringSubmatch(event.Message)
 		eventSource := eventSourceArray[2]
+		var lambdaMapping string
 
 		accountLevelLog := true
 
@@ -226,19 +227,54 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 			}
 		} else if eventSource == "s3.amazonaws.com" {
 			s3RegexArray := s3Regex.FindStringSubmatch(event.Message)
+
 			s3Arn := s3Regex.SubexpIndex("arn")
 
 			if len(s3RegexArray) > 0 && s3Arn != 0 {
 				resoureIDMap["system.aws.arn"] = fmt.Sprintf(s3RegexArray[s3Arn])
 				accountLevelLog = false
 			}
-		}
 
+		} else if eventSource == "lambda.amazonaws.com" {
+
+			lambdaRegexArray := lambdaRegex.FindStringSubmatch(event.Message)
+			if len(lambdaRegexArray) > 0 {
+				lambdaFunctionName := lambdaRegex.SubexpIndex("functionName")
+				lambdaResourceName := lambdaRegex.SubexpIndex("resource")
+				lambdaFunctionWithVersion := lambdaRegex.SubexpIndex("functionVersion")
+
+				functionNameStr := fmt.Sprintf("%v", lambdaRegexArray[lambdaFunctionName])
+				resourceNameStr := fmt.Sprintf("%v", lambdaRegexArray[lambdaResourceName])
+				lambdaFunctionWithVersionStr := fmt.Sprintf("%v", lambdaRegexArray[lambdaFunctionWithVersion])
+
+				if functionNameStr != "" {
+					lambdaMapping = functionNameStr
+				} else if resourceNameStr != "" {
+					lambdaMapping = resourceNameStr
+				} else {
+					lambdaMapping = lambdaFunctionWithVersionStr
+				}
+				if lambdaMapping != "" {
+					accountLevelLog = false
+					if strings.Contains(lambdaMapping, "arn:aws:lambda") && !strings.Contains(lambdaMapping, ":$") {
+						resoureIDMap["system.aws.arn"] = lambdaMapping
+
+					} else if !strings.Contains(lambdaMapping, "arn:aws:lambda") {
+						resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, data.Owner, lambdaMapping)
+
+					} else if strings.Contains(lambdaMapping, ":$") {
+						resoureIDMap["system.aws.arn"] = strings.Split(lambdaMapping, ":$")[0]
+					} else {
+						accountLevelLog = true
+					}
+				}
+			}
+
+		}
 		if accountLevelLog {
 			resoureIDMap["system.aws.accountid"] = data.Owner
 			resoureIDMap["system.cloud.category"] = "AWS/LMAccount"
 		}
-
 		lmEv := ingest.Log{
 			Message:    event.Message,
 			ResourceID: resoureIDMap,

@@ -581,3 +581,21 @@ func TestParseCloudtrailLogsS3(t *testing.T) {
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
+
+func TestParseCloudtrailLogsLambda(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAAO1W227bRhD9F6JPhdbZO3f5xtpyYMBJg0hogUaGMNxdqkQpUiUpG47hf++QlBTZadIAcR8CCCBAcOfM7czskR6idWhbWIX5/SZESXSRztPlm+lslr6eRpOovqtCg8fcUCmFotRwisdlvXrd1NsNWl7BXfvKlfXWdw0U5WicdU2A9TO/5XmPmveo5bYlAdqOsKVEj3abta4pNl1RV5dF2YWmjZIP0S5qAeWyhGztYdkDo5shxfQ2VF0Pe4gKj5lELLmOpTGMcqm5EpZTFhsrtdZGCM0lfnLJqbUqZpzHylKtdN9NVyAHHayxHaZjw2MhNeXCTvbcYPiHRRT6jL9hbVjlIkoWETujZhFNFtG2Dc2VR2vR3aMFsR2yOWDS32ez0NwWLgzIorqt/wr+l/vBiG20Z7CGj3WFLJ65er2IHie7THOsakBxrIVQfMyc0UTZhLI/hmADbFZvGzcCS1hnHp4H3APfwi7e1VDDYEDQ+7Da93MYymBrh8BX71LvG6ThiwXv+k9XmONroCb8vUWa30GDhfQjHpnKt5Xr534oD5oqQb9k7CY5FJUc71Kyd0uu31xjvsu6uYPGh+bAsoPePN/PYViXo77SpnqaDYN8KRfayKpf9+TZsic/H0d0rt7uKDh2H0eKFG7qqg3TMqz7xUVYtS3LfgbeF32pUA41XkAHT5k5XrnvIyf56TqdT2fzfUnDQK4uhsh54ILTmBJ8A5GgGMlCLglkTINVIc6M+7RMOyePN8tBTok01hOpLSfAjSZKecd1iLVTsBs++F+rsl/7HMo2jIwMvPVUfMB2YeTvyv8Lg5OnNypJrsf+k8tdpwMkff/2RTbo8eZwBw9J79p0U5xDWQ6Z1lChLPSD3O3VUVeu2BR4ln69nfZPaIKfHnGpPfM8t4544WMireDEOgZEcaUUGCmspZ8GcA5dWNXNqCPjzjziVL9PDNmPJYYMlTDh8UkMT2L4wmIIUsiMgiI2Y3gXKbPEWEqJ9tZncaBZsPxzMbTC61woQplHBRWZIUZLSix3woAGShU7ieG3iWGQmeDgBQGhGZFK4Q+LCJTElFrAL0H1/y2G/IcTQ5EwcxLDkxi+sBhy77V2sSeGcUski2MCNJYkMEc1eJcbDp+JofKZNbkIRHmESgiBmDjkuKqUO68soCSexPDbxFABBAU0JxZ5J5Ljv+yM4bU3sUI/a5yh9r/E8ObxH0p2zy7qDwAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	//2023-03-08 11:04:20.239 +0000 UTC
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"logs.amazonaws.com\"},\"eventTime\":\"2023-03-08T10:59:01Z\",\"eventSource\":\"lambda.amazonaws.com\",\"eventName\":\"Invoke\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceArn\":\"arn:aws:logs:us-east-1:280443500820:log-group:/aws/cloudtrail:*\",\"sourceAccount\":\"280443500820\"},\"responseElements\":null,\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder:$LATEST\"},\"requestID\":\"fe232070-e23a-4a51-bef4-ab16a95e7b8c\",\"eventID\":\"d833caf0-489d-4692-a286-55dc26e76c5a\",\"readOnly\":false,\"resources\":[{\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\",\"ARN\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":false,\"recipientAccountId\":\"280443500820\",\"sharedEventID\":\"6d1d2f9c-d3d7-4932-9c1a-52555a843990\",\"eventCategory\":\"Data\"}",
+		Timestamp:  time.Date(2023, time.March, 8, 11, 4, 20, 239000000, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder"},
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}

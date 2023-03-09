@@ -255,6 +255,7 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 					lambdaMapping = lambdaFunctionWithVersionStr
 				}
 				if lambdaMapping != "" {
+					accountLevelLog = false
 					if strings.Contains(lambdaMapping, "arn:aws:lambda") && !strings.Contains(lambdaMapping, ":$") {
 						resoureIDMap["system.aws.arn"] = lambdaMapping
 
@@ -263,8 +264,9 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 
 					} else if strings.Contains(lambdaMapping, ":$") {
 						resoureIDMap["system.aws.arn"] = strings.Split(lambdaMapping, ":$")[0]
+					} else {
+						accountLevelLog = true
 					}
-					accountLevelLog = false
 				}
 			}
 

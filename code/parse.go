@@ -14,7 +14,7 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var s3Regex, _ = regexp.Compile(`("ARN":")(?P<arn>[^/][^,][^"]*)`)
+var s3Regex, _ = regexp.Compile(`("bucketName":")(?P<bucketName>[^/][^,][^"]*)|("ARN":")(?P<arn>[^/][^,][^"]*)`)
 var lambdaRegex, _ = regexp.Compile(`("functionName":")(?P<functionName>[^/][^,][^"]*)|("resource":")(?P<resource>[^/][^,][^"]*)|("functionVersion":")(?P<functionVersion>[^/][^,][^"]*)`)
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
@@ -229,10 +229,16 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 			s3RegexArray := s3Regex.FindStringSubmatch(event.Message)
 
 			s3Arn := s3Regex.SubexpIndex("arn")
+			s3Bucket := s3Regex.SubexpIndex("bucketName")
 
-			if len(s3RegexArray) > 0 && s3Arn != 0 {
-				resoureIDMap["system.aws.arn"] = fmt.Sprintf(s3RegexArray[s3Arn])
-				accountLevelLog = false
+			if len(s3RegexArray) > 0 {
+				if s3Bucket != 0 {
+					resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:s3:::%s", s3RegexArray[s3Bucket])
+					accountLevelLog = false
+				} else if s3Arn != 0 {
+					resoureIDMap["system.aws.arn"] = fmt.Sprintf(s3RegexArray[s3Arn])
+					accountLevelLog = false
+				}
 			}
 
 		} else if eventSource == "lambda.amazonaws.com" {

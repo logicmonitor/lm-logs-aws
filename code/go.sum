@@ -19,6 +19,8 @@ github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20201026123256-fc4c3571fda0 h1:MZl
 github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20201026123256-fc4c3571fda0/go.mod h1:CL/s31hARWqG3TsIX4wkBouv3wqbS/grm/jV+avXDQY=
 github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20210301071118-44b910823a84 h1:Optt1OctnFBWgZgH0hpYmWV6CtGgfU+VDyoOybnURiQ=
 github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20210301071118-44b910823a84/go.mod h1:CL/s31hARWqG3TsIX4wkBouv3wqbS/grm/jV+avXDQY=
+github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20230330103256-8277e47656f9 h1:it9zY3OrwBgbed12/kt3bLGzSR4Rl9ig9QoGQc8jhsk=
+github.com/logicmonitor/lm-logs-sdk-go v0.0.0-20230330103256-8277e47656f9/go.mod h1:CL/s31hARWqG3TsIX4wkBouv3wqbS/grm/jV+avXDQY=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

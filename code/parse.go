@@ -16,6 +16,10 @@ import (
 
 var s3Regex, _ = regexp.Compile(`("bucketName":")(?P<bucketName>[^/][^,][^"]*)|("ARN":")(?P<arn>[^/][^,][^"]*)`)
 var lambdaRegex, _ = regexp.Compile(`("functionName":")(?P<functionName>[^/][^,][^"]*)|("resource":")(?P<resource>[^/][^,][^"]*)|("functionVersion":")(?P<functionVersion>[^/][^,][^"]*)`)
+var awsRegionRegex, _ = regexp.Compile(`("awsRegion":")(?P<awsRegion>[^/][^,][^"]*)`)
+var awsEventSourceRegex, _ = regexp.Compile(`("eventSource":")(?P<eventSource>[^/][^,][^"]*)`)
+var awsARNRegex, _ = regexp.Compile(`("arn":")(?P<arn>[^/][^,][^"]*)`)
+var metadataArray []string
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -51,12 +55,14 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 
 	arn := fmt.Sprintf("arn:aws:elasticloadbalancing:%s:%s:loadbalancer/%s", region, accountId, elbName)
 
+	metadataMap := extractMetadata(region, arn, "elb.amazonaws.com")
 	for _, message := range allMessages {
 
 		log := ingest.Log{
 			Message:    message,
 			ResourceID: map[string]string{"system.aws.arn": arn},
 			Timestamp:  request.Records[0].EventTime,
+			Metadata:   metadataMap,
 		}
 
 		lmBatch = append(lmBatch, log)
@@ -83,10 +89,12 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 
 	lmBatch := make([]ingest.Log, 0)
 
+	metadataMap := extractMetadata(request.Records[0].AWSRegion, arn, request.Records[0].EventSource)
 	lmEv := ingest.Log{
 		Message:    content,
 		ResourceID: map[string]string{"system.aws.arn": arn},
 		Timestamp:  request.Records[0].EventTime,
+		Metadata:   metadataMap,
 	}
 
 	lmBatch = append(lmBatch, lmEv)
@@ -95,6 +103,7 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 }
 
 func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
+	var metadataMap = map[string]string{}
 
 	lmBatch := make([]ingest.Log, 0)
 	d, err := request.AWSLogs.Parse()
@@ -110,6 +119,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		rdsInstance := rdsEnhancedEvent["instanceID"]
 		resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance), "rds.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/rds") {
 		splitLogGroup := strings.Split(d.LogGroup, "/")
 		if splitLogGroup[len(splitLogGroup)-1] == "networkInterface" {
@@ -117,12 +127,16 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 			splitLogStream := strings.Split(d.LogStream, "-")
 			resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 			resoureProp[resourceProperty] = resourceValue
+			metadataMap = extractMetadata(awsRegion, "", "rds.amazonaws.com")
+
 		} else {
 			re1, _ := regexp.Compile(`/aws/rds/(instance|cluster)/([^/]*)`)
 			result := re1.FindStringSubmatch(d.LogGroup)
 			rdsInstance := result[2]
 			resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 			resoureProp[resourceProperty] = resourceValue
+			metadataMap = extractMetadata(awsRegion, fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance), "rds.amazonaws.com")
+
 		}
 	} else if d.LogGroup != "/aws/lambda/lm" && strings.Contains(d.LogGroup, "/aws/lambda") {
 		re1, _ := regexp.Compile(`aws/lambda/(.*)`)
@@ -130,6 +144,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		lambdaName := result[1]
 		resourceValue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName)
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName), "lambda.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/ec2/networkInterface") {
 		isEC2NetworkInterface = true
 	} else if strings.Contains(d.LogGroup, "/aws/natGateway/networkInterface") {
@@ -137,23 +152,31 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		splitLogStream := strings.Split(d.LogStream, "-")
 		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, "", "natGateway.amazonaws.com")
+
 	} else if strings.Contains(d.LogGroup, "/aws/kinesisfirehose") {
 		splitLogGroup := strings.Split(d.LogGroup, "/")
 		resourceValue = splitLogGroup[3]
 		resoureProp[resourceProperty] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, d.Owner, resourceValue)
+		metadataMap = extractMetadata(awsRegion, fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, d.Owner, resourceValue), "firehose.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/elb/networkInterface") {
 		resourceProperty = "system.aws.networkInterfaceId"
 		splitLogStream := strings.Split(d.LogStream, "-")
 		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, "", "networkInterfaceId.amazonaws.com")
+
 	} else if strings.Contains(d.LogGroup, "/aws/fargate") {
 		resoureProp["system.aws.accountid"] = d.Owner
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
+		metadataMap = extractMetadata(awsRegion, "", "fargate.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
 		return parseCloudTrailLogs(d)
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream), "ec2.amazonaws.com")
+
 	}
 
 	handleFatalError("failed to parse cloudwatch event", err)
@@ -165,12 +188,15 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 				ec2InstanceID := splitEventMessage[0]
 				resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID)
 				resoureProp[resourceProperty] = resourceValue
+				metadataMap = extractMetadata(awsRegion, fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID), "ec2.amazonaws.com")
+
 			}
 
 			lmEv := ingest.Log{
 				Message:    event.Message,
 				ResourceID: resoureProp,
 				Timestamp:  time.Unix(0, event.Timestamp*1000000),
+				Metadata:   metadataMap,
 			}
 			lmBatch = append(lmBatch, lmEv)
 		}
@@ -195,13 +221,14 @@ func decompressGzip(content string) string {
 
 func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 	lmBatch := make([]ingest.Log, 0)
+
 	for _, event := range data.LogEvents {
 		var resoureIDMap = make(map[string]string)
 		eventSourceRegex, _ := regexp.Compile(`("eventSource":")([^",]*)`)
 		eventSourceArray := eventSourceRegex.FindStringSubmatch(event.Message)
 		eventSource := eventSourceArray[2]
 		var lambdaMapping string
-
+		metadataMap := extractMetadataForCloudTrail(event)
 		accountLevelLog := true
 
 		if eventSource == "firehose.amazonaws.com" {
@@ -285,10 +312,52 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 			Message:    event.Message,
 			ResourceID: resoureIDMap,
 			Timestamp:  time.Unix(0, event.Timestamp*1000000),
+			Metadata:   metadataMap,
 		}
 		lmBatch = append(lmBatch, lmEv)
 	}
 
 	return lmBatch
 
+}
+
+func extractMetadataForCloudTrail(event events.CloudwatchLogsLogEvent) map[string]string {
+	var metadataMap = make(map[string]string)
+	metadataMap["_integration"] = "aws"
+	for _, str := range metadataArray {
+		if strings.TrimSpace(str) == "awsRegion" {
+			regionRegexArray := awsRegionRegex.FindStringSubmatch(event.Message)
+			awsRegion := awsRegionRegex.SubexpIndex("awsRegion")
+			if len(regionRegexArray) > 0 && awsRegion != 0 {
+				metadataMap["region"] = fmt.Sprintf(regionRegexArray[awsRegion])
+			}
+		} else if strings.TrimSpace(str) == "arn" {
+			arnRegexArray := awsARNRegex.FindStringSubmatch(event.Message)
+			awsARN := awsARNRegex.SubexpIndex("arn")
+			if len(arnRegexArray) > 0 && awsARN != 0 {
+				metadataMap["arn"] = fmt.Sprintf(arnRegexArray[awsARN])
+			}
+		}
+	}
+	eventSourceRegexArray := awsEventSourceRegex.FindStringSubmatch(event.Message)
+	eventSourceRegex := awsEventSourceRegex.SubexpIndex("eventSource")
+	if len(eventSourceRegexArray) > 0 && eventSourceRegex != 0 {
+		metadataMap["_type"] = fmt.Sprintf(eventSourceRegexArray[eventSourceRegex])
+	}
+	return metadataMap
+}
+
+func extractMetadata(region string, arn string, eventsource string) map[string]string {
+	var metadataMap = make(map[string]string)
+	metadataMap["_integration"] = "aws"
+	for _, str := range metadataArray {
+		if strings.TrimSpace(str) == "awsRegion" {
+			metadataMap["region"] = region
+
+		} else if strings.TrimSpace(str) == "arn" && arn != "" {
+			metadataMap["arn"] = arn
+		}
+	}
+	metadataMap["_type"] = eventsource
+	return metadataMap
 }

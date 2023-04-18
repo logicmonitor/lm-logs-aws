@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 func ExtractEnvironmentVariables() {
@@ -22,6 +23,9 @@ func ExtractEnvironmentVariables() {
 
 	lmHost = os.Getenv("LM_HOST")
 	companyName = os.Getenv("LM_COMPANY_NAME")
+	defaultMetadata := os.Getenv("METADATA")
+
+	metadataArray = strings.Split(defaultMetadata, ",")
 
 	if lmHost == "" && companyName == "" {
 		log.Fatalf("missing company name")

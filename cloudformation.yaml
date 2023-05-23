@@ -20,6 +20,13 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: The LM API tokens access key
+  Metadata:
+    Type: CommaDelimitedList
+    Description: Metadata if any
+    Default: awsRegion, arn
+    AllowedValues: 
+     - awsRegion
+     - arn
   FunctionName:
     Type: String
     Default: LMLogsForwarder
@@ -63,6 +70,7 @@ Resources:
         Variables:
           LM_COMPANY_NAME:
             Ref: LMCompanyName
+          METADATA: !Join [",", !Ref Metadata]
           LM_ACCESS_ID_ARN:
             Ref: AccessIdSecret
           LM_ACCESS_KEY_ARN:

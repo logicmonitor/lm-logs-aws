@@ -20,6 +20,7 @@ var awsRegionRegex, _ = regexp.Compile(`("awsRegion":")(?P<awsRegion>[^/][^,][^"
 var awsEventSourceRegex, _ = regexp.Compile(`("eventSource":")(?P<eventSource>[^/][^,][^"]*)`)
 var awsARNRegex, _ = regexp.Compile(`("arn":")(?P<arn>[^/][^,][^"]*)`)
 var metadataArray []string
+var ec2Regex, _ = regexp.Compile(`("instanceId":")(?P<instanceId>[^/][^"]*)`)
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -303,11 +304,20 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 				}
 			}
 
+		} else if eventSource == "ec2.amazonaws.com" {
+			ec2RegexArray := ec2Regex.FindAllStringSubmatch(event.Message, -1)
+			if len(ec2RegexArray) == 1 {
+				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, data.Owner, ec2RegexArray[0][2])
+				accountLevelLog = false
+			}
+
 		}
+
 		if accountLevelLog {
 			resoureIDMap["system.aws.accountid"] = data.Owner
 			resoureIDMap["system.cloud.category"] = "AWS/LMAccount"
 		}
+
 		lmEv := ingest.Log{
 			Message:    event.Message,
 			ResourceID: resoureIDMap,

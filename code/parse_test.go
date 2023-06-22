@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -358,7 +359,7 @@ func TestParseCloudtrailLogs(t *testing.T) {
 	expectedLMEvent := ingest.Log{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/LogicMonitor_119/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJVBZZRIN7\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4\",\"arn\":\"arn:aws:iam::197152445587:role/LogicMonitor_119\",\"accountId\":\"197152445587\",\"userName\":\"LogicMonitor_119\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-16T06:03:12Z\"}}},\"eventTime\":\"2021-04-16T06:27:05Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"DescribeInstanceStatus\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.221.10.3\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"errorCode\":\"Client.RequestLimitExceeded\",\"errorMessage\":\"Request limit exceeded.\",\"requestParameters\":{\"instancesSet\":{\"items\":[{\"instanceId\":\"i-0d345eec77c8a08b1\"}]},\"filterSet\":{},\"includeAllInstances\":false},\"responseElements\":null,\"requestID\":\"23b2ea29-b7b1-449f-a584-035f485f05cf\",\"eventID\":\"703a3ad3-3d3d-4bd1-8637-3692f850e857\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
 		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.accountid": "197152445587", "system.cloud.category": "AWS/LMAccount"},
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-0d345eec77c8a08b1"},
 		Metadata:   metadataMap,
 	}
 
@@ -648,5 +649,41 @@ func TestParseCloudtrailLogsLambda(t *testing.T) {
 		Metadata:   metadataMap,
 	}
 
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudTrailLogsEC2(t *testing.T) {
+	var s = "{\"owner\":\"123456678\",\"logGroup\":\"/aws/cloudtrail\",\"logStream\":\"123456678_CloudTrail_us-west-2_3\",\"subscriptionFilters\":[\"testsubslambda\"],\"messageType\":\"DATA_MESSAGE\",\"logEvents\":[{\"id\":\"\",\"timestamp\":123456789,\"message\":\"{\\\"eventVersion\\\":\\\"1.08\\\",\\\"userIdentity\\\":{\\\"type\\\":\\\"AssumedRole\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\\\",\\\"arn\\\":\\\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"accessKeyId\\\":\\\"ASIAUCS54HEKDHXBQTVJ\\\",\\\"sessionContext\\\":{\\\"sessionIssuer\\\":{\\\"type\\\":\\\"Role\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N\\\",\\\"arn\\\":\\\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"userName\\\":\\\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\"},\\\"webIdFederationData\\\":{},\\\"attributes\\\":{\\\"creationDate\\\":\\\"2023-05-23T05:07:33Z\\\",\\\"mfaAuthenticated\\\":\\\"false\\\"}}},\\\"eventTime\\\":\\\"2023-05-23T05:36:11Z\\\",\\\"eventSource\\\":\\\"ec2.amazonaws.com\\\",\\\"eventName\\\":\\\"DescribeInstanceAttribute\\\",\\\"awsRegion\\\":\\\"us-west-2\\\",\\\"sourceIPAddress\\\":\\\"49.207.217.191\\\",\\\"userAgent\\\":\\\"AWSInternal\\\",\\\"requestParameters\\\":{\\\"instanceId\\\":\\\"i-0d51cd459226160ac\\\",\\\"attribute\\\":\\\"disableApiTermination\\\"},\\\"responseElements\\\":null,\\\"requestID\\\":\\\"468e0670-30d9-4ef7-ab75-648c03d63371\\\",\\\"eventID\\\":\\\"78294249-5828-4dde-8b53-49f81d715b95\\\",\\\"readOnly\\\":true,\\\"eventType\\\":\\\"AwsApiCall\\\",\\\"managementEvent\\\":true,\\\"recipientAccountId\\\":\\\"123456678\\\",\\\"eventCategory\\\":\\\"Management\\\",\\\"sessionCredentialFromConsole\\\":\\\"true\\\"}\"}]}"
+	var data events.CloudwatchLogsData
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudTrailLogs(data)
+	var metadataMap = map[string]string{"_integration": "aws", "_type": "ec2.amazonaws.com"}
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\",\"arn\":\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\",\"accountId\":\"123456678\",\"accessKeyId\":\"ASIAUCS54HEKDHXBQTVJ\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAUCS54HEKDKHAECU5N\",\"arn\":\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\",\"accountId\":\"123456678\",\"userName\":\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\"},\"webIdFederationData\":{},\"attributes\":{\"creationDate\":\"2023-05-23T05:07:33Z\",\"mfaAuthenticated\":\"false\"}}},\"eventTime\":\"2023-05-23T05:36:11Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"DescribeInstanceAttribute\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"49.207.217.191\",\"userAgent\":\"AWSInternal\",\"requestParameters\":{\"instanceId\":\"i-0d51cd459226160ac\",\"attribute\":\"disableApiTermination\"},\"responseElements\":null,\"requestID\":\"468e0670-30d9-4ef7-ab75-648c03d63371\",\"eventID\":\"78294249-5828-4dde-8b53-49f81d715b95\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456678\",\"eventCategory\":\"Management\",\"sessionCredentialFromConsole\":\"true\"}",
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::123456678:instance/i-0d51cd459226160ac"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudTrailLogsSQS(t *testing.T) {
+	var s = "{\"owner\":\"123456678\",\"logGroup\":\"/aws/cloudtrail\",\"logStream\":\"123456678_CloudTrail_us-west-2_3\",\"subscriptionFilters\":[\"testsubslambda\"],\"messageType\":\"DATA_MESSAGE\",\"logEvents\":[{\"id\":\"\",\"timestamp\":123456789,\"message\":\"{\\\"eventVersion\\\":\\\"1.08\\\",\\\"userIdentity\\\":{\\\"type\\\":\\\"AssumedRole\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\\\",\\\"arn\\\":\\\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"accessKeyId\\\":\\\"ASIAUCS54HEKPPHDNOGC\\\",\\\"sessionContext\\\":{\\\"sessionIssuer\\\":{\\\"type\\\":\\\"Role\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N\\\",\\\"arn\\\":\\\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"userName\\\":\\\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\"},\\\"webIdFederationData\\\":{},\\\"attributes\\\":{\\\"creationDate\\\":\\\"2023-05-03T08:34:17Z\\\",\\\"mfaAuthenticated\\\":\\\"false\\\"}}},\\\"eventTime\\\":\\\"2023-05-03T09:16:01Z\\\",\\\"eventSource\\\":\\\"sqs.amazonaws.com\\\",\\\"eventName\\\":\\\"CreateQueue\\\",\\\"awsRegion\\\":\\\"us-west-2\\\",\\\"sourceIPAddress\\\":\\\"49.207.235.15\\\",\\\"userAgent\\\":\\\"AWSInternal\\\",\\\"requestParameters\\\":{\\\"attribute\\\":{\\\"Policy\\\":\\\"{\\\\\\\"Version\\\\\\\":\\\\\\\"2012-10-17\\\\\\\",\\\\\\\"Id\\\\\\\":\\\\\\\"__default_policy_ID\\\\\\\",\\\\\\\"Statement\\\\\\\":[{\\\\\\\"Sid\\\\\\\":\\\\\\\"__owner_statement\\\\\\\",\\\\\\\"Effect\\\\\\\":\\\\\\\"Allow\\\\\\\",\\\\\\\"Principal\\\\\\\":{\\\\\\\"AWS\\\\\\\":\\\\\\\"123456678\\\\\\\"},\\\\\\\"Action\\\\\\\":[\\\\\\\"SQS:*\\\\\\\"],\\\\\\\"Resource\\\\\\\":\\\\\\\"arn:aws:sqs:us-west-2:123456678:TestPoojaNew\\\\\\\"}]}\\\",\\\"ReceiveMessageWaitTimeSeconds\\\":\\\"0\\\",\\\"SqsManagedSseEnabled\\\":\\\"true\\\",\\\"DelaySeconds\\\":\\\"0\\\",\\\"KmsMasterKeyId\\\":\\\"\\\",\\\"RedrivePolicy\\\":\\\"\\\",\\\"MessageRetentionPeriod\\\":\\\"345600\\\",\\\"MaximumMessageSize\\\":\\\"262144\\\",\\\"VisibilityTimeout\\\":\\\"30\\\",\\\"RedriveAllowPolicy\\\":\\\"\\\"},\\\"tags\\\":{\\\"test\\\":\\\"true\\\"}},\\\"responseElements\\\":{\\\"queueUrl\\\":\\\"https://sqs.us-west-2.amazonaws.com/123456678/TestPoojaNew\\\"},\\\"requestID\\\":\\\"7c41e87a-a828-5717-8eb2-b4b680b92479\\\",\\\"eventID\\\":\\\"85297ed4-f144-4afb-84ce-63e9e58556b4\\\",\\\"readOnly\\\":false,\\\"eventType\\\":\\\"AwsApiCall\\\",\\\"managementEvent\\\":true,\\\"recipientAccountId\\\":\\\"123456678\\\",\\\"eventCategory\\\":\\\"Management\\\",\\\"sessionCredentialFromConsole\\\":\\\"true\\\"}\"}]}"
+	var data events.CloudwatchLogsData
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudTrailLogs(data)
+	var metadataMap = map[string]string{"_integration": "aws", "_type": "sqs.amazonaws.com"}
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\",\"arn\":\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\",\"accountId\":\"123456678\",\"accessKeyId\":\"ASIAUCS54HEKPPHDNOGC\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAUCS54HEKDKHAECU5N\",\"arn\":\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\",\"accountId\":\"123456678\",\"userName\":\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\"},\"webIdFederationData\":{},\"attributes\":{\"creationDate\":\"2023-05-03T08:34:17Z\",\"mfaAuthenticated\":\"false\"}}},\"eventTime\":\"2023-05-03T09:16:01Z\",\"eventSource\":\"sqs.amazonaws.com\",\"eventName\":\"CreateQueue\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"49.207.235.15\",\"userAgent\":\"AWSInternal\",\"requestParameters\":{\"attribute\":{\"Policy\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Id\\\":\\\"__default_policy_ID\\\",\\\"Statement\\\":[{\\\"Sid\\\":\\\"__owner_statement\\\",\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"123456678\\\"},\\\"Action\\\":[\\\"SQS:*\\\"],\\\"Resource\\\":\\\"arn:aws:sqs:us-west-2:123456678:TestPoojaNew\\\"}]}\",\"ReceiveMessageWaitTimeSeconds\":\"0\",\"SqsManagedSseEnabled\":\"true\",\"DelaySeconds\":\"0\",\"KmsMasterKeyId\":\"\",\"RedrivePolicy\":\"\",\"MessageRetentionPeriod\":\"345600\",\"MaximumMessageSize\":\"262144\",\"VisibilityTimeout\":\"30\",\"RedriveAllowPolicy\":\"\"},\"tags\":{\"test\":\"true\"}},\"responseElements\":{\"queueUrl\":\"https://sqs.us-west-2.amazonaws.com/123456678/TestPoojaNew\"},\"requestID\":\"7c41e87a-a828-5717-8eb2-b4b680b92479\",\"eventID\":\"85297ed4-f144-4afb-84ce-63e9e58556b4\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456678\",\"eventCategory\":\"Management\",\"sessionCredentialFromConsole\":\"true\"}",
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:sqs::123456678:TestPoojaNew"},
+		Metadata:   metadataMap,
+	}
 	assert.Equal(t, expectedLMEvent, logs[0])
 }

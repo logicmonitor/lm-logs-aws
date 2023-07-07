@@ -687,3 +687,24 @@ func TestCloudTrailLogsSQS(t *testing.T) {
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
+
+func TestParseCloudtrailLogsS3ForARN(t *testing.T) {
+	var s = "{\"owner\":\"123456678\",\"logGroup\":\"/aws/cloudtrail\",\"logStream\":\"123456678_CloudTrail_us-west-2_3\",\"subscriptionFilters\":[\"testsubslambda\"],\"messageType\":\"DATA_MESSAGE\",\"logEvents\":[{\"id\":\"\",\"timestamp\":123456789,\"message\":\"{\\\"eventVersion\\\":\\\"1.08\\\",\\\"userIdentity\\\":{\\\"type\\\":\\\"AWSService\\\",\\\"invokedBy\\\":\\\"cloudtrail.amazonaws.com\\\"},\\\"eventTime\\\":\\\"2023-03-03T07:30:04Z\\\",\\\"eventSource\\\":\\\"s3.amazonaws.com\\\",\\\"eventName\\\":\\\"GetBucketAcl\\\",\\\"awsRegion\\\":\\\"us-east-1\\\",\\\"sourceIPAddress\\\":\\\"cloudtrail.amazonaws.com\\\",\\\"userAgent\\\":\\\"cloudtrail.amazonaws.com\\\",\\\"requestParameters\\\":{\\\"Host\\\":\\\"aws-cloudtrail-logs-700010466334-8d075b05.s3.us-east-1.amazonaws.com\\\",\\\"acl\\\":\\\"\\\"},\\\"responseElements\\\":null,\\\"additionalEventData\\\":{\\\"SignatureVersion\\\":\\\"SigV4\\\",\\\"CipherSuite\\\":\\\"ECDHE-RSA-AES128-GCM-SHA256\\\",\\\"bytesTransferredIn\\\":0,\\\"AuthenticationMethod\\\":\\\"AuthHeader\\\",\\\"x-amz-id-2\\\":\\\"La8vQCxEf9pcqy/H8Y7Rs7aULfw0Qkc0EI+uKOFTyuMu8of/2a/yvPO6hKck3V5YaGneBCVwzkw=\\\",\\\"bytesTransferredOut\\\":568},\\\"requestID\\\":\\\"TAQNDGTZC32834P4\\\",\\\"eventID\\\":\\\"2514d9c5-5365-4b24-ac86-241dea825ad6\\\",\\\"readOnly\\\":true,\\\"resources\\\":[{\\\"accountId\\\":\\\"700010466334\\\",\\\"type\\\":\\\"AWS::S3::Bucket\\\",\\\"ARN\\\":\\\"arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05\\\"}],\\\"eventType\\\":\\\"AwsApiCall\\\",\\\"managementEvent\\\":true,\\\"recipientAccountId\\\":\\\"700010466334\\\",\\\"sharedEventID\\\":\\\"59523b9c-953d-4110-b4d5-b8209621af88\\\",\\\"eventCategory\\\":\\\"Management\\\"}\"}]}"
+	var data events.CloudwatchLogsData
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudTrailLogs(data)
+
+	var metadataMap = map[string]string{"_integration": "aws", "_type": "s3.amazonaws.com"}
+
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"cloudtrail.amazonaws.com\"},\"eventTime\":\"2023-03-03T07:30:04Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"GetBucketAcl\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"cloudtrail.amazonaws.com\",\"userAgent\":\"cloudtrail.amazonaws.com\",\"requestParameters\":{\"Host\":\"aws-cloudtrail-logs-700010466334-8d075b05.s3.us-east-1.amazonaws.com\",\"acl\":\"\"},\"responseElements\":null,\"additionalEventData\":{\"SignatureVersion\":\"SigV4\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"bytesTransferredIn\":0,\"AuthenticationMethod\":\"AuthHeader\",\"x-amz-id-2\":\"La8vQCxEf9pcqy/H8Y7Rs7aULfw0Qkc0EI+uKOFTyuMu8of/2a/yvPO6hKck3V5YaGneBCVwzkw=\",\"bytesTransferredOut\":568},\"requestID\":\"TAQNDGTZC32834P4\",\"eventID\":\"2514d9c5-5365-4b24-ac86-241dea825ad6\",\"readOnly\":true,\"resources\":[{\"accountId\":\"700010466334\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"700010466334\",\"sharedEventID\":\"59523b9c-953d-4110-b4d5-b8209621af88\",\"eventCategory\":\"Management\"}",
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05"},
+		Metadata:   metadataMap,
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}

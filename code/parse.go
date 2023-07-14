@@ -225,10 +225,9 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 	lmBatch := make([]ingest.Log, 0)
 
 	for _, event := range data.LogEvents {
-		var resoureIDMap = make(map[string]string)
 		metadataMap := extractMetadataForCloudTrail(event.Message)
 
-		resoureIDMap = processResourceMapping(event.Message, data.Owner)
+		resoureIDMap := processResourceMapping(event.Message, data.Owner)
 
 		lmEv := ingest.Log{
 			Message:    event.Message,
@@ -410,12 +409,10 @@ func parseCloudWatchEvents(request events.CloudWatchEvent) []ingest.Log {
 	}
 
 	event := string(detailStr)
-	var resoureIDMap = make(map[string]string)
-	metadataMap := make(map[string]string)
 
 	if request.DetailType == "AWS API Call via CloudTrail" {
-		metadataMap = extractMetadataForCloudTrail(event)
-		resoureIDMap = processResourceMapping(event, request.AccountID)
+		metadataMap := extractMetadataForCloudTrail(event)
+		resoureIDMap := processResourceMapping(event, request.AccountID)
 		lmEv := ingest.Log{
 			Message:    event,
 			ResourceID: resoureIDMap,

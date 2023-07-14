@@ -66,12 +66,12 @@ func ScrubLogsWithRegex(lmBatch []ingest.Log) {
 func ParseEventType(requests interface{}) string {
 	data := requests.(map[string]interface{})
 
-	_, ok := data["awslogs"]
+	_, ok := data["awslogs"] //cloudwatch logs
 	if ok {
 		return "cloudwatch"
 	}
 
-	_, ok = data["Records"]
+	_, ok = data["Records"] //s3 and elb logs
 	if ok {
 		event := convertToS3Event(requests)
 		if strings.Contains(event.Records[0].S3.Object.Key, "elasticloadbalancing") {
@@ -79,6 +79,12 @@ func ParseEventType(requests interface{}) string {
 		}
 		return "s3"
 	}
+
+	_, ok = data["source"] // cloudWatchEvents
+	if ok {
+		return "cloudwatchEvents"
+	}
+
 	log.Fatalf("Could not extract event type")
 	return ""
 }
@@ -107,6 +113,9 @@ func ExtractLogs(data interface{}) []ingest.Log {
 		if err != nil {
 			fmt.Printf("WARN failed to parse elb logs %s\n", err)
 		}
+	case "cloudwatchEvents":
+		cloudwatchEvents := convertToCloudWatchEvent(data)
+		logs = parseCloudWatchEvents(cloudwatchEvents)
 	}
 	return logs
 }

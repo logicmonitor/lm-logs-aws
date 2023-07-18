@@ -708,3 +708,51 @@ func TestParseCloudtrailLogsS3ForARN(t *testing.T) {
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
+
+func TestCloudWatchEventsS3(t *testing.T) {
+	var s = "{\"account\":\"280443500820\",\"detail\":{\"additionalEventData\":{\"AuthenticationMethod\":\"AuthHeader\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"SignatureVersion\":\"SigV4\",\"bytesTransferredIn\":0,\"bytesTransferredOut\":0,\"x-amz-id-2\":\"UJNZntIyly1aAdiFVSPCwh14QRbyGaVQsbTjtgaNHRYgy0gl4p8c2Uu8Iu498icXe/3JHf9VFHo=\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"b9d131b3-70c7-4f74-a203-bddda20b7469\",\"eventName\":\"HeadBucket\",\"eventSource\":\"s3.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:54Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":true,\"recipientAccountId\":\"280443500820\",\"requestID\":\"J9ZE535Z4A4RVWZF\",\"requestParameters\":{\"Host\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"bucketName\":\"sagemaker-studio-280443500820-6jk579yrjdw\"},\"resources\":[{\"ARNPrefix\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw/\",\"type\":\"AWS::S3::Object\"},{\"ARN\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw\",\"accountId\":\"1234567\",\"type\":\"AWS::S3::Bucket\"}],\"responseElements\":null,\"sourceIPAddress\":\"10.54.148.148\",\"tlsDetails\":{\"cipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"clientProvidedHostHeader\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"tlsVersion\":\"TLSv1.2\"},\"userAgent\":\"[aws-sdk-java/1.12.498Linux/5.10.178-162.673.amzn2.x86_64OpenJDK_64-Bit_Server_VM/17.0.7+7-LTSjava/17.0.7vendor/Amazon.com_Inc.cfg/retry-mode/legacy]\",\"userIdentity\":{\"accessKeyId\":\"ASIAUCS54HEKCWHITL6Z\",\"accountId\":\"1234567\",\"arn\":\"arn:aws:sts::280443500820:assumed-role/aws-test-pooja-role/LMAssumeRoleSession\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ:LMAssumeRoleSession\",\"sessionContext\":{\"attributes\":{\"creationDate\":\"2023-07-13T09:06:17Z\",\"mfaAuthenticated\":\"false\"},\"sessionIssuer\":{\"accountId\":\"1234567\",\"arn\":\"arn:aws:iam::280443500820:role/aws-test-pooja-role\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ\",\"type\":\"Role\",\"userName\":\"aws-test-pooja-role\"}},\"type\":\"AssumedRole\"},\"vpcEndpointId\":\"vpce-051f8c152e5ab9b9d\"},\"detail-type\":\"AWS API Call via CloudTrail\",\"id\":\"0cc13242-9685-6b5a-4881-e970d28cc19c\",\"region\":\"us-west-2\",\"resources\":[],\"source\":\"aws.s3\",\"time\":\"2023-07-13T09:52:54Z\",\"version\":\"0\"}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]string{"_integration": "aws", "_type": "s3.amazonaws.com"}
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"additionalEventData\":{\"AuthenticationMethod\":\"AuthHeader\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"SignatureVersion\":\"SigV4\",\"bytesTransferredIn\":0,\"bytesTransferredOut\":0,\"x-amz-id-2\":\"UJNZntIyly1aAdiFVSPCwh14QRbyGaVQsbTjtgaNHRYgy0gl4p8c2Uu8Iu498icXe/3JHf9VFHo=\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"b9d131b3-70c7-4f74-a203-bddda20b7469\",\"eventName\":\"HeadBucket\",\"eventSource\":\"s3.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:54Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":true,\"recipientAccountId\":\"280443500820\",\"requestID\":\"J9ZE535Z4A4RVWZF\",\"requestParameters\":{\"Host\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"bucketName\":\"sagemaker-studio-280443500820-6jk579yrjdw\"},\"resources\":[{\"ARNPrefix\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw/\",\"type\":\"AWS::S3::Object\"},{\"ARN\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw\",\"accountId\":\"1234567\",\"type\":\"AWS::S3::Bucket\"}],\"responseElements\":null,\"sourceIPAddress\":\"10.54.148.148\",\"tlsDetails\":{\"cipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"clientProvidedHostHeader\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"tlsVersion\":\"TLSv1.2\"},\"userAgent\":\"[aws-sdk-java/1.12.498Linux/5.10.178-162.673.amzn2.x86_64OpenJDK_64-Bit_Server_VM/17.0.7+7-LTSjava/17.0.7vendor/Amazon.com_Inc.cfg/retry-mode/legacy]\",\"userIdentity\":{\"accessKeyId\":\"ASIAUCS54HEKCWHITL6Z\",\"accountId\":\"1234567\",\"arn\":\"arn:aws:sts::280443500820:assumed-role/aws-test-pooja-role/LMAssumeRoleSession\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ:LMAssumeRoleSession\",\"sessionContext\":{\"attributes\":{\"creationDate\":\"2023-07-13T09:06:17Z\",\"mfaAuthenticated\":\"false\"},\"sessionIssuer\":{\"accountId\":\"1234567\",\"arn\":\"arn:aws:iam::280443500820:role/aws-test-pooja-role\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ\",\"type\":\"Role\",\"userName\":\"aws-test-pooja-role\"}},\"type\":\"AssumedRole\"},\"vpcEndpointId\":\"vpce-051f8c152e5ab9b9d\"}",
+		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 54, 0, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsLambda(t *testing.T) {
+	var s = "{\"account\":\"280443500820\",\"detail\":{\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder:$LATEST\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"e34805e1-c975-40ff-96e9-8fb01c4bd5ec\",\"eventName\":\"Invoke\",\"eventSource\":\"lambda.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:58Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":false,\"recipientAccountId\":\"280443500820\",\"requestID\":\"84fe1797-0fa3-4c28-a84b-318328f0ff1f\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceAccount\":\"280443500820\",\"sourceArn\":\"arn:aws:logs:us-west-2:280443500820:log-group:/aws/events/cloudwatchEventsTest:*\"},\"resources\":[{\"ARN\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\"}],\"responseElements\":null,\"sharedEventID\":\"779c751a-2152-4151-93b9-254d90b5819a\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"userIdentity\":{\"invokedBy\":\"logs.amazonaws.com\",\"type\":\"AWSService\"}},\"detail-type\":\"AWS API Call via CloudTrail\",\"id\":\"e8954201-f3c4-54cd-9665-dee6ab22bf5a\",\"region\":\"us-west-2\",\"resources\":[],\"source\":\"aws.lambda\",\"time\":\"2023-07-13T09:52:58Z\",\"version\":\"0\"}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]string{"_integration": "aws", "_type": "lambda.amazonaws.com"}
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder:$LATEST\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"e34805e1-c975-40ff-96e9-8fb01c4bd5ec\",\"eventName\":\"Invoke\",\"eventSource\":\"lambda.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:58Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":false,\"recipientAccountId\":\"280443500820\",\"requestID\":\"84fe1797-0fa3-4c28-a84b-318328f0ff1f\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceAccount\":\"280443500820\",\"sourceArn\":\"arn:aws:logs:us-west-2:280443500820:log-group:/aws/events/cloudwatchEventsTest:*\"},\"resources\":[{\"ARN\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\"}],\"responseElements\":null,\"sharedEventID\":\"779c751a-2152-4151-93b9-254d90b5819a\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"userIdentity\":{\"invokedBy\":\"logs.amazonaws.com\",\"type\":\"AWSService\"}}",
+		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 58, 0, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsEC2Lanuch(t *testing.T) {
+	var s = "{\"version\":\"0\",\"id\":\"1681ab87-4a09-459f-95a2-7fa09403c4b7\",\"detail-type\":\"EC2InstanceLaunchUnsuccessful\",\"source\":\"aws.autoscaling\",\"account\":\"123456789012\",\"time\":\"2015-11-11T21:42:36Z\",\"region\":\"us-east-1\",\"resources\":[\"arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:528ffce5-ef9f-4c1d-8d18-5d005b4a438c:autoScalingGroupName/sampleBrokenASG\",\"arn:aws:ec2:us-east-1:123456789012:instance/\"],\"detail\":{\"StatusCode\":\"Failed\",\"AutoScalingGroupName\":\"brokenASG\",\"ActivityId\":\"06076c51-4874-487d-b15b-7895a713ab55\",\"Details\":{\"AvailabilityZone\":\"us-east-1e\",\"SubnetID\":\"subnet-16c5df2c\"},\"RequestId\":\"06076c51-4874-487d-b15b-7895a713ab55\",\"EndTime\":\"2015-11-11T21:42:36.000Z\",\"EC2InstanceId\":\"\",\"StartTime\":\"2015-11-11T21:42:36.698Z\",\"Cause\":\"At2015-11-11T21:42:09ZauserrequestupdateofAutoScalingGroupconstraintstomin:0,max:10,desired:2changingthedesiredcapacityfrom0to2.At2015-11-11T21:42:35Zaninstancewasstartedinresponsetoadifferencebetweendesiredandactualcapacity,increasingthecapacityfrom0to2.\"}}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+
+	assert.Len(t, logs, 0)
+}

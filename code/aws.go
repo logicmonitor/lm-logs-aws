@@ -61,11 +61,11 @@ func convertToS3Event(m interface{}) events.S3Event {
 
 func convertToCloudWatchEvent(m interface{}) events.CloudWatchEvent {
 	data, err := json.Marshal(m)
-	handleFatalError("failed to marshal s3 event", err)
+	handleFatalError("failed to marshal cloudWatch event", err)
 
 	var result events.CloudWatchEvent
 	err = json.Unmarshal(data, &result)
-	handleFatalError("failed to unmarshal s3 event", err)
+	handleFatalError("failed to unmarshal cloudWatch event", err)
 
 	return result
 }

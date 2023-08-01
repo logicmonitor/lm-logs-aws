@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -11,14 +12,30 @@ import (
 func ExtractEnvironmentVariables() {
 	awsRegion = os.Getenv("AWS_REGION")
 
-	accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY_ARN"))
-	if accessKey == "" {
-		log.Fatalf("missing LM_ACCESS_KEY_ARN env var")
-	}
+	useSecretManager = os.Getenv("USE_SECRET_MANAGER")
 
-	accessID = getSecretValue(os.Getenv("LM_ACCESS_ID_ARN"))
-	if accessID == "" {
-		log.Fatalf("missing LM_ACCESS_ID_ARN env var")
+	if useSecretManager == "true" {
+		fmt.Println("Using Secrets Manager to store LM credentials")
+		accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY"))
+		if accessKey == "" {
+			log.Fatalf("missing LM_ACCESS_KEY env var")
+		}
+
+		accessID = getSecretValue(os.Getenv("LM_ACCESS_ID"))
+		if accessID == "" {
+			log.Fatalf("missing LM_ACCESS_ID env var")
+		}
+	} else {
+		fmt.Println("Using Environmental Variables to store LM credentials")
+		accessKey = os.Getenv("LM_ACCESS_KEY")
+		if accessKey == "" {
+			log.Fatalf("missing LM_ACCESS_KEY env var")
+		}
+
+		accessID = os.Getenv("LM_ACCESS_ID")
+		if accessID == "" {
+			log.Fatalf("missing LM_ACCESS_ID env var")
+		}
 	}
 
 	lmHost = os.Getenv("LM_HOST")

@@ -5,6 +5,67 @@ Mappings:
   Constants:
     LMForwarder:
       Version: 1.0.6
+  RegionToLayerArnMap:
+    us-east-1:
+      "LayerArn": "arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    us-east-2:
+      "LayerArn": "arn:aws:lambda:us-east-2:590474943231:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    eu-west-1:
+      "LayerArn": "arn:aws:lambda:eu-west-1:015030872274:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    eu-west-2:
+      "LayerArn": "arn:aws:lambda:eu-west-2:133256977650:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    eu-west-3:
+      "LayerArn": "arn:aws:lambda:eu-west-3:780235371811:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    us-west-2:
+      "LayerArn": "arn:aws:lambda:us-west-2:345057560386:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    us-west-1:
+      "LayerArn": "arn:aws:lambda:us-west-1:997803712105:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ca-central-1:
+      "LayerArn": "arn:aws:lambda:ca-central-1:200266452380:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    eu-central-1:
+      "LayerArn": "arn:aws:lambda:eu-central-1:187925254637:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    eu-central-2:
+      "LayerArn": "arn:aws:lambda:eu-central-2:772501565639:layer:AWS-Parameters-and-Secrets-Lambda-Extension:1"
+    eu-north-1:
+      "LayerArn": "arn:aws:lambda:eu-north-1:427196147048:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    eu-south-1:
+      "LayerArn": "arn:aws:lambda:eu-south-1:325218067255:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    eu-south-2:
+      "LayerArn": "arn:aws:lambda:eu-south-2:524103009944:layer:AWS-Parameters-and-Secrets-Lambda-Extension:1"
+    cn-north-1:
+      "LayerArn": "arn:aws-cn:lambda:cn-north-1:287114880934:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    cn-northwest-1:
+      "LayerArn": "arn:aws-cn:lambda:cn-northwest-1:287310001119:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-east-1:
+      "LayerArn": "arn:aws:lambda:ap-east-1:768336418462:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-south-2:
+      "LayerArn": "arn:aws:lambda:ap-south-2:070087711984:layer:AWS-Parameters-and-Secrets-Lambda-Extension:1"
+    ap-northeast-1:
+      "LayerArn": "arn:aws:lambda:ap-northeast-1:133490724326:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-northeast-3:
+      "LayerArn": "arn:aws:lambda:ap-northeast-3:576959938190:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-northeast-2:
+      "LayerArn": "arn:aws:lambda:ap-northeast-2:738900069198:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-southeast-1:
+      "LayerArn": "arn:aws:lambda:ap-southeast-1:044395824272:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-southeast-2:
+      "LayerArn": "arn:aws:lambda:ap-southeast-2:665172237481:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-southeast-3:
+      "LayerArn": "arn:aws:lambda:ap-southeast-3:490737872127:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-south-1:
+      "LayerArn": "arn:aws:lambda:ap-south-1:176022468876:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    sa-east-1:
+      "LayerArn": "arn:aws:lambda:sa-east-1:933737806257:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    af-south-1:
+      "LayerArn": "arn:aws:lambda:af-south-1:317013901791:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    me-central-1:
+      "LayerArn": "arn:aws:lambda:me-central-1:858974508948:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    me-south-1:
+      "LayerArn": "arn:aws:lambda:me-south-1:832021897121:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    us-gov-east-1:
+      "LayerArn": "arn:aws-us-gov:lambda:us-gov-east-1:129776340158:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    us-gov-west-1:
+      "LayerArn": "arn:aws-us-gov:lambda:us-gov-west-1:127562683043:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
 Parameters:
   LMCompanyName:
     Type: String
@@ -24,9 +85,14 @@ Parameters:
     Type: CommaDelimitedList
     Description: Metadata if any
     Default: awsRegion, arn
-    AllowedValues: 
+    AllowedValues:
      - awsRegion
      - arn
+  UseSecretManagerForStoringSecrets:
+    Type: String
+    Description: If true it will use secrets manager and cache the credentials which can incur cost to secrets manager.If false it will use enviromental variables
+    AllowedValues: [true, false]
+    Default: "false"
   FunctionName:
     Type: String
     Default: LMLogsForwarder
@@ -43,7 +109,7 @@ Parameters:
     Description:  The memory size for the LM Forwarder lambda function
   FunctionTimeoutInSeconds:
     Type: Number
-    Default: 120
+    Default: 360
     Description: The timeout for the LM Forwarder lambda function
   PermissionsBoundaryArn:
     Type: String
@@ -61,22 +127,27 @@ Resources:
       MemorySize:
         Ref: FunctionMemorySize
       Runtime: go1.x
-      CodeUri: 
+      CodeUri:
         Bucket: !Ref ForwarderZipsBucket
         Key: main.zip
       Timeout:
         Ref: FunctionTimeoutInSeconds
+      Layers:
+        - Fn::If:
+          - CreateSecretManager
+          - !FindInMap [RegionToLayerArnMap, !Ref "AWS::Region", LayerArn]
+          - Ref: AWS::NoValue
       Environment:
         Variables:
           LM_COMPANY_NAME:
             Ref: LMCompanyName
           METADATA: !Join [",", !Ref Metadata]
-          LM_ACCESS_ID_ARN:
-            Ref: AccessIdSecret
-          LM_ACCESS_KEY_ARN:
-            Ref: AccessKeySecret
+          LM_ACCESS_ID: !If [CreateSecretManager, !Ref AccessIdSecret, !Ref LMAccessId]
+          LM_ACCESS_KEY: !If [CreateSecretManager, !Ref AccessKeySecret, !Ref LMAccessKey]
           LM_SCRUB_REGEX:
             Ref: LMRegexScrub
+          USE_SECRET_MANAGER:
+            Ref: UseSecretManagerForStoringSecrets
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -84,14 +155,15 @@ Resources:
               Action:
                 - s3:Get*
               Resource: "*"
-        - Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Action:
-                - secretsmanager:GetSecretValue
-              Resource:
-                - Ref: AccessKeySecret
-                - Ref: AccessIdSecret
+            - Fn::If:
+              - CreateSecretManager
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - Ref: AccessKeySecret
+                  - Ref: AccessIdSecret
+              - Ref: AWS::NoValue
   CloudWatchLogsPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -144,10 +216,10 @@ Resources:
         import boto3
         import urllib.request
         import os
-        
+
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
-        
+
         def send_cfn_resp(event, context, response_status):
             resp_body = json.dumps({
                 'Status': response_status,
@@ -220,12 +292,14 @@ Resources:
         Variables:
           LM_FORWARDER_VERSION: !FindInMap [Constants, LMForwarder, Version]
   AccessKeySecret:
+    Condition: CreateSecretManager
     Type: AWS::SecretsManager::Secret
     Properties:
       Description: Logic Monitor Access Key
       SecretString:
         Ref: LMAccessKey
   AccessIdSecret:
+    Condition: CreateSecretManager
     Type: AWS::SecretsManager::Secret
     Properties:
       Description: Logic Monitor Access Id
@@ -237,6 +311,7 @@ Conditions:
       - Fn::Equals:
           - Ref: PermissionsBoundaryArn
           - ""
+  CreateSecretManager: !Equals [!Ref UseSecretManagerForStoringSecrets, true]
 Outputs:
   LMForwarderArn:
     Description: Logic Monitor Forwarder Lambda Function ARN

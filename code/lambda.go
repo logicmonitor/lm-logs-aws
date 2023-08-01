@@ -13,7 +13,7 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var lmHost, awsRegion, scrubRegex, logSource, versionID string
+var lmHost, awsRegion, scrubRegex, logSource, versionID, useSecretManager string
 var accessID, accessKey, companyName string
 var debug bool
 
@@ -122,13 +122,15 @@ func ExtractLogs(data interface{}) []ingest.Log {
 
 // Lambda handler
 func handler(request interface{}) {
+	ExtractEnvironmentVariables()
+
 	logs := ExtractLogs(request)
 	ScrubLogsWithRegex(logs)
 	SendLogs(logs)
 }
 
 func main() {
-	ExtractEnvironmentVariables()
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
 	lambda.Start(handler)
+
 }

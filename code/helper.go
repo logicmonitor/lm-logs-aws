@@ -12,14 +12,10 @@ func ExtractEnvironmentVariables() {
 	awsRegion = os.Getenv("AWS_REGION")
 
 	accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY_ARN"))
-	if accessKey == "" {
-		log.Fatalf("missing LM_ACCESS_KEY_ARN env var")
-	}
 
 	accessID = getSecretValue(os.Getenv("LM_ACCESS_ID_ARN"))
-	if accessID == "" {
-		log.Fatalf("missing LM_ACCESS_ID_ARN env var")
-	}
+
+	bearerToken = getSecretValue((os.Getenv("LM_BEARER_TOKEN_ARN")))
 
 	lmHost = os.Getenv("LM_HOST")
 	companyName = os.Getenv("LM_COMPANY_NAME")

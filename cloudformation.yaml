@@ -4,7 +4,7 @@ Description: Pushes logs from AWS to Logic Monitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.0.6
+      Version: 1.1.0
 Parameters:
   LMCompanyName:
     Type: String
@@ -20,11 +20,16 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: The LM API tokens access key
+  LMBearerToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: The LM API Bearer token. (You must specify LMBearerToken if not providing LMAccessId, LMAccessKey. In case you provide all, LMAccessId and LMAccessKey will be used to authenticate with Logicmonitor.  )
   Metadata:
     Type: CommaDelimitedList
     Description: Metadata if any
     Default: awsRegion, arn
-    AllowedValues: 
+    AllowedValues:
      - awsRegion
      - arn
   FunctionName:
@@ -49,6 +54,17 @@ Parameters:
     Type: String
     Default: ""
     Description: ARN for the Permissions Boundary Policy
+
+Rules:
+  NoAccessIdKeyProvided:
+    RuleCondition: !Or [!Equals [!Ref LMAccessId, ""], !Equals [!Ref LMAccessKey, ""]]
+    Assertions:
+      - AssertDescription: Please specify either LMAccessId, LMAccessKey both or LMBearerToken to authenticate with Logicmonitor.
+        Assert: !Not
+          - !Equals
+            - !Ref LMBearerToken
+            - ""
+
 Resources:
   Forwarder:
     Type: AWS::Serverless::Function
@@ -61,7 +77,7 @@ Resources:
       MemorySize:
         Ref: FunctionMemorySize
       Runtime: go1.x
-      CodeUri: 
+      CodeUri:
         Bucket: !Ref ForwarderZipsBucket
         Key: main.zip
       Timeout:
@@ -71,10 +87,9 @@ Resources:
           LM_COMPANY_NAME:
             Ref: LMCompanyName
           METADATA: !Join [",", !Ref Metadata]
-          LM_ACCESS_ID_ARN:
-            Ref: AccessIdSecret
-          LM_ACCESS_KEY_ARN:
-            Ref: AccessKeySecret
+          LM_ACCESS_ID_ARN: !If [UseLMV1ForAuth,!Ref AccessIdSecret, "" ]
+          LM_ACCESS_KEY_ARN: !If [UseLMV1ForAuth,!Ref AccessKeySecret, "" ]
+          LM_BEARER_TOKEN_ARN: !If [MustUseBearerTokenForAuth, !Ref BearerTokenSecret, ""]
           LM_SCRUB_REGEX:
             Ref: LMRegexScrub
       Policies:
@@ -90,8 +105,9 @@ Resources:
               Action:
                 - secretsmanager:GetSecretValue
               Resource:
-                - Ref: AccessKeySecret
-                - Ref: AccessIdSecret
+                - !If [UseLMV1ForAuth, !Ref AccessIdSecret, !Ref AWS::NoValue]
+                - !If [UseLMV1ForAuth, !Ref AccessKeySecret, !Ref AWS::NoValue]
+                - !If [MustUseBearerTokenForAuth, !Ref BearerTokenSecret, !Ref AWS::NoValue]
   CloudWatchLogsPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -144,10 +160,10 @@ Resources:
         import boto3
         import urllib.request
         import os
-        
+
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
-        
+
         def send_cfn_resp(event, context, response_status):
             resp_body = json.dumps({
                 'Status': response_status,
@@ -220,6 +236,7 @@ Resources:
         Variables:
           LM_FORWARDER_VERSION: !FindInMap [Constants, LMForwarder, Version]
   AccessKeySecret:
+    Condition: UseLMV1ForAuth
     Type: AWS::SecretsManager::Secret
     Properties:
       Description: Logic Monitor Access Key
@@ -227,16 +244,31 @@ Resources:
         Ref: LMAccessKey
   AccessIdSecret:
     Type: AWS::SecretsManager::Secret
+    Condition: UseLMV1ForAuth
     Properties:
       Description: Logic Monitor Access Id
       SecretString:
         Ref: LMAccessId
+  BearerTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: MustUseBearerTokenForAuth
+    Properties:
+      Description: Logic Monitor Bearer Token
+      SecretString:
+        Ref: LMBearerToken
 Conditions:
   SetPermissionsBoundary:
     Fn::Not:
       - Fn::Equals:
           - Ref: PermissionsBoundaryArn
           - ""
+  AccessIdEmpty: !Equals [!Ref LMAccessId, ""]
+  AccessKeyEmpty: !Equals [!Ref LMAccessKey, ""]
+  MustUseBearerTokenForAuth: !Or
+    - !Condition AccessIdEmpty
+    - !Condition AccessKeyEmpty
+  UseLMV1ForAuth: !Not [!Condition MustUseBearerTokenForAuth]
+
 Outputs:
   LMForwarderArn:
     Description: Logic Monitor Forwarder Lambda Function ARN
@@ -257,6 +289,7 @@ Metadata:
           - LMCompanyName
           - LMAccessId
           - LMAccessKey
+          - LMBearerToken
           - LMRegexScrub
       - Label:
           default: Lambda Function (Optional)

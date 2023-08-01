@@ -13,6 +13,9 @@ import (
 type GetContentFromS3Bucket func(string, string) string
 
 func getSecretValue(secretArn string) string {
+	if len(secretArn) < 1 {
+		return ""
+	}
 	session := session.Must(session.NewSession())
 	secManager := secretsmanager.New(session)
 	secretValueOutput, err := secManager.GetSecretValue(&secretsmanager.GetSecretValueInput{

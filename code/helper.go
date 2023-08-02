@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -15,27 +14,25 @@ func ExtractEnvironmentVariables() {
 	useSecretManager = os.Getenv("USE_SECRET_MANAGER")
 
 	if useSecretManager == "true" {
-		fmt.Println("Using Secrets Manager to store LM credentials")
-		accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY"))
-		if accessKey == "" {
-			log.Fatalf("missing LM_ACCESS_KEY env var")
+		if debug {
+			log.Println("Using Secrets Manager to store LM credentials")
 		}
+		accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY"))
 
 		accessID = getSecretValue(os.Getenv("LM_ACCESS_ID"))
-		if accessID == "" {
-			log.Fatalf("missing LM_ACCESS_ID env var")
-		}
+
+		bearerToken = getSecretValue((os.Getenv("LM_BEARER_TOKEN")))
+
 	} else {
-		fmt.Println("Using Environmental Variables to store LM credentials")
-		accessKey = os.Getenv("LM_ACCESS_KEY")
-		if accessKey == "" {
-			log.Fatalf("missing LM_ACCESS_KEY env var")
+		if debug {
+			log.Println("Using Environmental Variables to store LM credentials")
 		}
+		accessKey = os.Getenv("LM_ACCESS_KEY")
 
 		accessID = os.Getenv("LM_ACCESS_ID")
-		if accessID == "" {
-			log.Fatalf("missing LM_ACCESS_ID env var")
-		}
+
+		bearerToken = os.Getenv("LM_BEARER_TOKEN")
+
 	}
 
 	lmHost = os.Getenv("LM_HOST")

@@ -21,7 +21,9 @@ var (
 type GetContentFromS3Bucket func(string, string) string
 
 func getSecretValue(secretArn string) string {
-
+	if len(secretArn) < 1 {
+		return ""
+	}
 	secrets_extension_endpoint := "http://localhost:2773/secretsmanager/get?secretId=" + secretArn
 
 	req, err := http.NewRequest("GET", secrets_extension_endpoint, nil)

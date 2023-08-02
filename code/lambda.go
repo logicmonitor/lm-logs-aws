@@ -13,8 +13,8 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var lmHost, awsRegion, scrubRegex, logSource, versionID, useSecretManager string
-var accessID, accessKey, companyName string
+var lmHost, awsRegion, scrubRegex, logSource, versionID ,useSecretManager string
+var accessID, accessKey, bearerToken, companyName string
 var debug bool
 
 func getCompany() string {
@@ -33,12 +33,9 @@ func SendLogs(logs []ingest.Log) {
 		return
 	}
 
-	lmIngest := ingest.Ingest{
-		CompanyName: getCompany(),
-		AccessID:    accessID,
-		AccessKey:   accessKey,
-		LogSource:   logSource,
-		VersionID:   versionID,
+	lmIngest, err := ingest.NewLogIngester(getCompany(), accessID, accessKey, bearerToken, logSource, versionID)
+	if err != nil {
+		log.Fatalf("Error while setting up LM Log Ingestion client. Error : %s", err)
 	}
 
 	// Send logs to Logic Monitor
@@ -123,7 +120,6 @@ func ExtractLogs(data interface{}) []ingest.Log {
 // Lambda handler
 func handler(request interface{}) {
 	ExtractEnvironmentVariables()
-
 	logs := ExtractLogs(request)
 	ScrubLogsWithRegex(logs)
 	SendLogs(logs)
@@ -132,5 +128,4 @@ func handler(request interface{}) {
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
 	lambda.Start(handler)
-
 }

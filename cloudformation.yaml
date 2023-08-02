@@ -81,13 +81,18 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: The LM API tokens access key
+  LMBearerToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: The LM API Bearer token. (You must specify LMBearerToken if not providing LMAccessId, LMAccessKey. In case you provide all, LMAccessId and LMAccessKey will be used to authenticate with Logicmonitor.  )
   Metadata:
     Type: CommaDelimitedList
     Description: Metadata if any
     Default: awsRegion, arn
     AllowedValues:
-     - awsRegion
-     - arn
+      - awsRegion
+      - arn
   UseSecretManagerForStoringSecrets:
     Type: String
     Description: If true it will use secrets manager and cache the credentials which can incur cost to secrets manager.If false it will use enviromental variables
@@ -115,6 +120,17 @@ Parameters:
     Type: String
     Default: ""
     Description: ARN for the Permissions Boundary Policy
+
+Rules:
+  NoAccessIdKeyProvided:
+    RuleCondition: !Or [!Equals [!Ref LMAccessId, ""], !Equals [!Ref LMAccessKey, ""]]
+    Assertions:
+      - AssertDescription: Please specify either LMAccessId, LMAccessKey both or LMBearerToken to authenticate with Logicmonitor.
+        Assert: !Not
+          - !Equals
+            - !Ref LMBearerToken
+            - ""
+
 Resources:
   Forwarder:
     Type: AWS::Serverless::Function
@@ -134,16 +150,17 @@ Resources:
         Ref: FunctionTimeoutInSeconds
       Layers:
         - Fn::If:
-          - CreateSecretManager
-          - !FindInMap [RegionToLayerArnMap, !Ref "AWS::Region", LayerArn]
-          - Ref: AWS::NoValue
+            - CreateSecretManager
+            - !FindInMap [RegionToLayerArnMap, !Ref "AWS::Region", LayerArn]
+            - Ref: AWS::NoValue
       Environment:
         Variables:
           LM_COMPANY_NAME:
             Ref: LMCompanyName
           METADATA: !Join [",", !Ref Metadata]
-          LM_ACCESS_ID: !If [CreateSecretManager, !Ref AccessIdSecret, !Ref LMAccessId]
-          LM_ACCESS_KEY: !If [CreateSecretManager, !Ref AccessKeySecret, !Ref LMAccessKey]
+          LM_ACCESS_ID: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessIdSecret, !Ref LMAccessId],  ""] #!Ref AccessIdSecret, !If [UseLMV1ForAuth, !Ref LMAccessId, "" ]
+          LM_ACCESS_KEY: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessKeySecret, !Ref LMAccessKey],  ""]
+          LM_BEARER_TOKEN: !If [MustUseBearerTokenForAuth, !If [CreateSecretManager, !Ref BearerTokenSecret, !Ref LMBearerToken],  ""]
           LM_SCRUB_REGEX:
             Ref: LMRegexScrub
           USE_SECRET_MANAGER:
@@ -156,14 +173,15 @@ Resources:
                 - s3:Get*
               Resource: "*"
             - Fn::If:
-              - CreateSecretManager
-              - Effect: Allow
-                Action:
-                  - secretsmanager:GetSecretValue
-                Resource:
-                  - Ref: AccessKeySecret
-                  - Ref: AccessIdSecret
-              - Ref: AWS::NoValue
+                - CreateSecretManager
+                - Effect: Allow
+                  Action:
+                    - secretsmanager:GetSecretValue
+                  Resource:
+                    - !If [UseLMV1ForAuth, !Ref AccessIdSecret, !Ref AWS::NoValue]
+                    - !If [UseLMV1ForAuth, !Ref AccessKeySecret, !Ref AWS::NoValue]
+                    - !If [MustUseBearerTokenForAuth, !Ref BearerTokenSecret, !Ref AWS::NoValue]
+                - Ref: AWS::NoValue
   CloudWatchLogsPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -182,7 +200,7 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketEncryption:
-          ServerSideEncryptionConfiguration:
+        ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       PublicAccessBlockConfiguration:
@@ -199,9 +217,9 @@ Resources:
         Fn::Sub:
           - "https://logicmonitor-logs-forwarder.s3.amazonaws.com/source/code/${LMForwarderVersion}/lambda.zip"
           - {
-              LMForwarderVersion:
-                !FindInMap [Constants, LMForwarder, Version],
-            }
+            LMForwarderVersion:
+              !FindInMap [Constants, LMForwarder, Version],
+          }
   ForwarderZipCopier:
     Type: AWS::Serverless::Function
     Properties:
@@ -292,26 +310,45 @@ Resources:
         Variables:
           LM_FORWARDER_VERSION: !FindInMap [Constants, LMForwarder, Version]
   AccessKeySecret:
-    Condition: CreateSecretManager
     Type: AWS::SecretsManager::Secret
+    Condition: CreateSecretAccess
     Properties:
       Description: Logic Monitor Access Key
       SecretString:
         Ref: LMAccessKey
   AccessIdSecret:
-    Condition: CreateSecretManager
     Type: AWS::SecretsManager::Secret
+    Condition: CreateSecretAccess
     Properties:
       Description: Logic Monitor Access Id
       SecretString:
         Ref: LMAccessId
+  BearerTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: CreateSecretBearerToken
+    Properties:
+      Description: Logic Monitor Bearer Token
+      SecretString:
+        Ref: LMBearerToken
 Conditions:
   SetPermissionsBoundary:
     Fn::Not:
       - Fn::Equals:
           - Ref: PermissionsBoundaryArn
           - ""
+  AccessIdEmpty: !Equals [!Ref LMAccessId, ""]
+  AccessKeyEmpty: !Equals [!Ref LMAccessKey, ""]
+  MustUseBearerTokenForAuth: !Or
+    - !Condition AccessIdEmpty
+    - !Condition AccessKeyEmpty
+  UseLMV1ForAuth: !Not [!Condition MustUseBearerTokenForAuth]
   CreateSecretManager: !Equals [!Ref UseSecretManagerForStoringSecrets, true]
+  CreateSecretAccess: !And
+    - !Condition UseLMV1ForAuth
+    - !Condition CreateSecretManager
+  CreateSecretBearerToken: !And
+    - !Condition MustUseBearerTokenForAuth
+    - !Condition CreateSecretManager
 Outputs:
   LMForwarderArn:
     Description: Logic Monitor Forwarder Lambda Function ARN
@@ -332,6 +369,7 @@ Metadata:
           - LMCompanyName
           - LMAccessId
           - LMAccessKey
+          - LMBearerToken
           - LMRegexScrub
       - Label:
           default: Lambda Function (Optional)

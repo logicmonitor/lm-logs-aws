@@ -14,7 +14,7 @@ import (
 )
 
 var lmHost, awsRegion, scrubRegex, logSource, versionID string
-var accessID, accessKey, companyName string
+var accessID, accessKey, bearerToken, companyName string
 var debug bool
 
 func getCompany() string {
@@ -33,12 +33,9 @@ func SendLogs(logs []ingest.Log) {
 		return
 	}
 
-	lmIngest := ingest.Ingest{
-		CompanyName: getCompany(),
-		AccessID:    accessID,
-		AccessKey:   accessKey,
-		LogSource:   logSource,
-		VersionID:   versionID,
+	lmIngest, err := ingest.NewLogIngester(getCompany(), accessID, accessKey, bearerToken, logSource, versionID)
+	if err != nil {
+		log.Fatalf("Error while setting up LM Log Ingestion client. Error : %s", err)
 	}
 
 	// Send logs to Logic Monitor

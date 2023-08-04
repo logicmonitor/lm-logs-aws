@@ -8,5 +8,4 @@ require (
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/logicmonitor/lm-logs-sdk-go v0.1.0
 	github.com/stretchr/testify v1.8.4
-	github.com/aws/aws-secretsmanager-caching-go v1.1.2 // indirect
 )

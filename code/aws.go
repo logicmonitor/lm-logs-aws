@@ -11,11 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-secretsmanager-caching-go/secretcache"
-)
-
-var (
-	secretCache, _ = secretcache.New()
 )
 
 type GetContentFromS3Bucket func(string, string) string

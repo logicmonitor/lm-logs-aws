@@ -11,11 +11,29 @@ import (
 func ExtractEnvironmentVariables() {
 	awsRegion = os.Getenv("AWS_REGION")
 
-	accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY_ARN"))
+	useSecretManager = os.Getenv("USE_SECRET_MANAGER")
 
-	accessID = getSecretValue(os.Getenv("LM_ACCESS_ID_ARN"))
+	if useSecretManager == "true" {
+		if debug {
+			log.Println("Using Secrets Manager to store LM credentials")
+		}
+		accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY"))
 
-	bearerToken = getSecretValue((os.Getenv("LM_BEARER_TOKEN_ARN")))
+		accessID = getSecretValue(os.Getenv("LM_ACCESS_ID"))
+
+		bearerToken = getSecretValue((os.Getenv("LM_BEARER_TOKEN")))
+
+	} else {
+		if debug {
+			log.Println("Using Environmental Variables to store LM credentials")
+		}
+		accessKey = os.Getenv("LM_ACCESS_KEY")
+
+		accessID = os.Getenv("LM_ACCESS_ID")
+
+		bearerToken = os.Getenv("LM_BEARER_TOKEN")
+
+	}
 
 	lmHost = os.Getenv("LM_HOST")
 	companyName = os.Getenv("LM_COMPANY_NAME")

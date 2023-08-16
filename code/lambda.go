@@ -13,8 +13,8 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var lmHost, awsRegion, scrubRegex, logSource, versionID string
-var accessID, accessKey, companyName string
+var lmHost, awsRegion, scrubRegex, logSource, versionID ,useSecretManager string
+var accessID, accessKey, bearerToken, companyName string
 var debug bool
 
 func getCompany() string {
@@ -33,12 +33,9 @@ func SendLogs(logs []ingest.Log) {
 		return
 	}
 
-	lmIngest := ingest.Ingest{
-		CompanyName: getCompany(),
-		AccessID:    accessID,
-		AccessKey:   accessKey,
-		LogSource:   logSource,
-		VersionID:   versionID,
+	lmIngest, err := ingest.NewLogIngester(getCompany(), accessID, accessKey, bearerToken, logSource, versionID)
+	if err != nil {
+		log.Fatalf("Error while setting up LM Log Ingestion client. Error : %s", err)
 	}
 
 	// Send logs to Logic Monitor
@@ -66,12 +63,12 @@ func ScrubLogsWithRegex(lmBatch []ingest.Log) {
 func ParseEventType(requests interface{}) string {
 	data := requests.(map[string]interface{})
 
-	_, ok := data["awslogs"]
+	_, ok := data["awslogs"] //cloudwatch logs
 	if ok {
 		return "cloudwatch"
 	}
 
-	_, ok = data["Records"]
+	_, ok = data["Records"] //s3 and elb logs
 	if ok {
 		event := convertToS3Event(requests)
 		if strings.Contains(event.Records[0].S3.Object.Key, "elasticloadbalancing") {
@@ -79,6 +76,12 @@ func ParseEventType(requests interface{}) string {
 		}
 		return "s3"
 	}
+
+	_, ok = data["source"] // cloudWatchEvents
+	if ok {
+		return "cloudwatchEvents"
+	}
+
 	log.Fatalf("Could not extract event type")
 	return ""
 }
@@ -107,19 +110,22 @@ func ExtractLogs(data interface{}) []ingest.Log {
 		if err != nil {
 			fmt.Printf("WARN failed to parse elb logs %s\n", err)
 		}
+	case "cloudwatchEvents":
+		cloudwatchEvents := convertToCloudWatchEvent(data)
+		logs = parseCloudWatchEvents(cloudwatchEvents)
 	}
 	return logs
 }
 
 // Lambda handler
 func handler(request interface{}) {
+	ExtractEnvironmentVariables()
 	logs := ExtractLogs(request)
 	ScrubLogsWithRegex(logs)
 	SendLogs(logs)
 }
 
 func main() {
-	ExtractEnvironmentVariables()
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
 	lambda.Start(handler)
 }

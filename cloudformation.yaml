@@ -4,7 +4,7 @@ Description: Pushes logs from AWS to Logic Monitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.2.0
+      Version: 1.3.0
   RegionToLayerArnMap:
     us-east-1:
       "LayerArn": "arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
@@ -93,6 +93,10 @@ Parameters:
     AllowedValues:
       - awsRegion
       - arn
+  MetadataKeysForJsonLogs:
+    Type: CommaDelimitedList
+    Description: Json keys to include in event metadata for cloudtaril logs and cloudwatch logs of json type
+
   UseSecretManagerForStoringSecrets:
     Type: String
     Description: If true it will use secrets manager and cache the credentials which can incur cost to secrets manager.If false it will use enviromental variables
@@ -165,6 +169,8 @@ Resources:
             Ref: LMRegexScrub
           USE_SECRET_MANAGER:
             Ref: UseSecretManagerForStoringSecrets
+          JSON_METADATA_KEYS: !Join [",", !Ref MetadataKeysForJsonLogs]
+          ADD_CLOUDWATCH_METADATA: "true"
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -371,6 +377,7 @@ Metadata:
           - LMAccessKey
           - LMBearerToken
           - LMRegexScrub
+          - MetadataKeysForJsonLogs
       - Label:
           default: Lambda Function (Optional)
         Parameters:

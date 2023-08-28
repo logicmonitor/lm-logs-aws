@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -55,7 +56,17 @@ func ExtractEnvironmentVariables() {
 
 	logSource = "lm-logs-aws"
 
-	versionID = "0.0.1"
+	versionID = "1.3.0"
+
+	defaultJsonMetadataKeyString := os.Getenv("JSON_METADATA_KEYS")
+	defaultJsonMetadataKeysRaw := strings.Split(defaultJsonMetadataKeyString, ",")
+	for _, str := range defaultJsonMetadataKeysRaw {
+		defaultJsonMetadataKeys = append(defaultJsonMetadataKeys, strings.Trim(str, " "))
+	}
+	addCWM, err := strconv.ParseBool(os.Getenv("ADD_CLOUDWATCH_METADATA"))
+	if err == nil {
+		addCloudWatchMetadata = addCWM
+	}
 }
 
 func readCloserToString(body io.ReadCloser) string {
@@ -67,5 +78,11 @@ func readCloserToString(body io.ReadCloser) string {
 func handleFatalError(errStr string, err error) {
 	if err != nil {
 		log.Fatalf("%s: %s", errStr, err)
+	}
+}
+
+func mergeMaps(m1 map[string]interface{}, m2 map[string]interface{}) {
+	for k, v := range m2 {
+		m1[k] = v
 	}
 }

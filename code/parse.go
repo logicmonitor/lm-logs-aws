@@ -307,8 +307,10 @@ func addCustomMetadataFromRawJson(initialMap map[string]interface{}, rawMessage 
 	if !json.Valid([]byte(rawMessage)) {
 		return
 	}
+	jsonQRead := goJsonQ.FromString(rawMessage)
 	for _, str := range jsonKeys {
-		val := goJsonQ.FromString(rawMessage).Find(str)
+		val := jsonQRead.Find(str)
+		jsonQRead.Reset()
 		if val != nil {
 			initialMap[str] = val
 		}

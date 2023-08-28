@@ -95,7 +95,7 @@ Parameters:
       - arn
   MetadataKeysForJsonLogs:
     Type: CommaDelimitedList
-    Description: Json keys to include in event metadata for cloudtrail logs
+    Description: Json keys to include in event metadata for cloudtaril logs and cloudwatch logs of json type
 
   UseSecretManagerForStoringSecrets:
     Type: String

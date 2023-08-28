@@ -234,7 +234,6 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 
 	cloudWatchMetadata := make(map[string]interface{})
 	addCloudWatchEventMetadata(cloudWatchMetadata, &data)
-	fmt.Printf("inside parsecloudtrail logs cloudwatchMetadata : %s \n", cloudWatchMetadata)
 	for _, event := range data.LogEvents {
 		metadataMap := extractMetadataForCloudTrail(event.Message)
 		mergeMaps(metadataMap, cloudWatchMetadata)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
+	jsonq "github.com/thedevsaddam/gojsonq/v2"
 )
 
 var s3Regex, _ = regexp.Compile(`("bucketName":")(?P<bucketName>[^/][^,][^"]*)|("ARN":")(?P<arn>[^/][^,][^"]*)`)
@@ -22,6 +23,9 @@ var awsARNRegex, _ = regexp.Compile(`("arn":")(?P<arn>[^/][^,][^"]*)`)
 var sqsRegex, _ = regexp.Compile(`("queueName":")(?P<queueName>[^/][^,][^"]*)|("queueUrl":")(?P<queueUrl>[^/][^,][^"]*)`)
 var metadataArray []string
 var ec2Regex, _ = regexp.Compile(`("instanceId":")(?P<instanceId>[^/][^"]*)`)
+var goJsonQ = jsonq.New()
+var defaultJsonMetadataKeys []string
+var addCloudWatchMetadata = false
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -105,8 +109,7 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 }
 
 func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
-	var metadataMap = map[string]string{}
-
+	var metadataMap = map[string]interface{}{}
 	lmBatch := make([]ingest.Log, 0)
 	d, err := request.AWSLogs.Parse()
 	var resourceValue string
@@ -183,6 +186,9 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 
 	handleFatalError("failed to parse cloudwatch event", err)
 
+	cloudWatchEventMetadata := make(map[string]interface{})
+	addCloudWatchEventMetadata(cloudWatchEventMetadata, &d)
+
 	for _, event := range d.LogEvents {
 		if strings.TrimSpace(event.Message) != "" {
 			if isEC2NetworkInterface && resourceValue == "" {
@@ -193,6 +199,8 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 				metadataMap = extractMetadata(awsRegion, fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID), "ec2.amazonaws.com")
 
 			}
+			addCustomMetadataFromRawJson(metadataMap, event.Message, defaultJsonMetadataKeys)
+			mergeMaps(metadataMap, cloudWatchEventMetadata)
 
 			lmEv := ingest.Log{
 				Message:    event.Message,
@@ -224,9 +232,11 @@ func decompressGzip(content string) string {
 func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 	lmBatch := make([]ingest.Log, 0)
 
+	cloudWatchMetadata := make(map[string]interface{})
+	addCloudWatchEventMetadata(cloudWatchMetadata, &data)
 	for _, event := range data.LogEvents {
 		metadataMap := extractMetadataForCloudTrail(event.Message)
-
+		mergeMaps(metadataMap, cloudWatchMetadata)
 		resoureIDMap := processResourceMapping(event.Message, data.Owner)
 
 		lmEv := ingest.Log{
@@ -246,8 +256,8 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 
 }
 
-func extractMetadataForCloudTrail(message string) map[string]string {
-	var metadataMap = make(map[string]string)
+func extractMetadataForCloudTrail(message string) map[string]interface{} {
+	var metadataMap = make(map[string]interface{})
 	metadataMap["_integration"] = "aws"
 	for _, str := range metadataArray {
 		if strings.TrimSpace(str) == "awsRegion" {
@@ -269,11 +279,12 @@ func extractMetadataForCloudTrail(message string) map[string]string {
 	if len(eventSourceRegexArray) > 0 && eventSourceRegex != 0 {
 		metadataMap["_type"] = fmt.Sprintf(eventSourceRegexArray[eventSourceRegex])
 	}
+	addCustomMetadataFromRawJson(metadataMap, message, defaultJsonMetadataKeys)
 	return metadataMap
 }
 
-func extractMetadata(region string, arn string, eventsource string) map[string]string {
-	var metadataMap = make(map[string]string)
+func extractMetadata(region string, arn string, eventsource string) map[string]interface{} {
+	var metadataMap = make(map[string]interface{})
 	metadataMap["_integration"] = "aws"
 	for _, str := range metadataArray {
 		if strings.TrimSpace(str) == "awsRegion" {
@@ -285,6 +296,36 @@ func extractMetadata(region string, arn string, eventsource string) map[string]s
 	}
 	metadataMap["_type"] = eventsource
 	return metadataMap
+}
+
+func addCustomMetadataFromRawJson(initialMap map[string]interface{}, rawMessage string, jsonKeys []string) {
+
+	if len(jsonKeys) < 1 {
+		return
+	}
+	if !json.Valid([]byte(rawMessage)) {
+		return
+	}
+	jsonQRead := goJsonQ.FromString(rawMessage)
+	for _, str := range jsonKeys {
+		val := jsonQRead.Find(str)
+		jsonQRead.Reset()
+		if val != nil {
+			initialMap[str] = val
+		}
+	}
+}
+
+func addCloudWatchEventMetadata(initialMap map[string]interface{}, logData *events.CloudwatchLogsData) {
+	if !addCloudWatchMetadata {
+		return
+	}
+	if len(logData.LogGroup) > 0 {
+		initialMap["logGroup"] = logData.LogGroup
+	}
+	if len(logData.LogStream) > 0 {
+		initialMap["logStream"] = logData.LogStream
+	}
 }
 
 func processResourceMapping(message string, accountId string) map[string]string {

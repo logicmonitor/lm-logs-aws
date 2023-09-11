@@ -21,11 +21,13 @@ var awsRegionRegex, _ = regexp.Compile(`("awsRegion":")(?P<awsRegion>[^/][^,][^"
 var awsEventSourceRegex, _ = regexp.Compile(`("eventSource":")(?P<eventSource>[^/][^,][^"]*)`)
 var awsARNRegex, _ = regexp.Compile(`("arn":")(?P<arn>[^/][^,][^"]*)`)
 var sqsRegex, _ = regexp.Compile(`("queueName":")(?P<queueName>[^/][^,][^"]*)|("queueUrl":")(?P<queueUrl>[^/][^,][^"]*)`)
-var metadataArray []string
 var ec2Regex, _ = regexp.Compile(`("instanceId":")(?P<instanceId>[^/][^"]*)`)
-var goJsonQ = jsonq.New()
+var cloudwatchResourceRegex, _ = regexp.Compile(`("resources":\[")(?P<resources>[^/][^,][^"]*)`)
+
 var defaultJsonMetadataKeys []string
 var addCloudWatchMetadata = false
+var metadataArray []string
+var goJsonQ = jsonq.New()
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
 	lmBatch := make([]ingest.Log, 0)
@@ -443,31 +445,46 @@ func processResourceMapping(message string, accountId string) map[string]string 
 
 func parseCloudWatchEvents(request events.CloudWatchEvent) []ingest.Log {
 	lmBatch := make([]ingest.Log, 0)
+	var resoureIDMap = make(map[string]string)
+	var metadataMap map[string]interface{}
+	var event string
+	if request.DetailType == "AWS API Call via CloudTrail" {
+		detailStr, err := json.Marshal(&request.Detail)
+		if err != nil {
+			panic(err)
+		}
 
-	detailStr, err := json.Marshal(&request.Detail)
-	if err != nil {
-		panic(err)
+		event = string(detailStr)
+		metadataMap = extractMetadataForCloudTrail(event)
+		resoureIDMap = processResourceMapping(event, request.AccountID)
+
+	} else {
+		requestStr, err := json.Marshal(&request)
+		if err != nil {
+			panic(err)
+		}
+		event = string(requestStr)
+		// the other detail-types for cloudwatch events have different json format and hence processing it separately
+
+		cloudwatchResourceRegexArray := cloudwatchResourceRegex.FindStringSubmatch(event)
+		cloudwatchResource := cloudwatchResourceRegex.SubexpIndex("resources")
+		if len(cloudwatchResourceRegexArray) > 0 && cloudwatchResource != 0 {
+			resoureIDMap["system.aws.arn"] = fmt.Sprintf(cloudwatchResourceRegexArray[cloudwatchResource])
+		}
+		metadataMap = extractMetadata(request.Region, fmt.Sprintf(cloudwatchResourceRegexArray[cloudwatchResource]), request.Source)
+
 	}
 
-	event := string(detailStr)
+	lmEv := ingest.Log{
+		Message:    event,
+		ResourceID: resoureIDMap,
+		Timestamp:  request.Time.Local(),
+		Metadata:   metadataMap,
+	}
+	lmBatch = append(lmBatch, lmEv)
 
-	if request.DetailType == "AWS API Call via CloudTrail" {
-		metadataMap := extractMetadataForCloudTrail(event)
-		resoureIDMap := processResourceMapping(event, request.AccountID)
-		lmEv := ingest.Log{
-			Message:    event,
-			ResourceID: resoureIDMap,
-			Timestamp:  request.Time.Local(),
-			Metadata:   metadataMap,
-		}
-
-		if debug {
-			fmt.Printf("request generated to lm-logs api: %s\n", lmEv)
-		}
-
-		lmBatch = append(lmBatch, lmEv)
-	} else {
-		return nil // for now we will ignore the other detail-types for cloudwatch events
+	if debug {
+		fmt.Printf("request generated to lm-logs api: %s\n", lmEv)
 	}
 
 	return lmBatch

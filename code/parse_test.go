@@ -745,7 +745,7 @@ func TestCloudWatchEventsLambda(t *testing.T) {
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
-func TestCloudWatchEventsEC2Lanuch(t *testing.T) {
+func TestCloudWatchEventsEC2Launch(t *testing.T) {
 	var s = "{\"version\":\"0\",\"id\":\"1681ab87-4a09-459f-95a2-7fa09403c4b7\",\"detail-type\":\"EC2InstanceLaunchUnsuccessful\",\"source\":\"aws.autoscaling\",\"account\":\"123456789012\",\"time\":\"2015-11-11T21:42:36Z\",\"region\":\"us-east-1\",\"resources\":[\"arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:528ffce5-ef9f-4c1d-8d18-5d005b4a438c:autoScalingGroupName/sampleBrokenASG\",\"arn:aws:ec2:us-east-1:123456789012:instance/\"],\"detail\":{\"StatusCode\":\"Failed\",\"AutoScalingGroupName\":\"brokenASG\",\"ActivityId\":\"06076c51-4874-487d-b15b-7895a713ab55\",\"Details\":{\"AvailabilityZone\":\"us-east-1e\",\"SubnetID\":\"subnet-16c5df2c\"},\"RequestId\":\"06076c51-4874-487d-b15b-7895a713ab55\",\"EndTime\":\"2015-11-11T21:42:36.000Z\",\"EC2InstanceId\":\"\",\"StartTime\":\"2015-11-11T21:42:36.698Z\",\"Cause\":\"At2015-11-11T21:42:09ZauserrequestupdateofAutoScalingGroupconstraintstomin:0,max:10,desired:2changingthedesiredcapacityfrom0to2.At2015-11-11T21:42:35Zaninstancewasstartedinresponsetoadifferencebetweendesiredandactualcapacity,increasingthecapacityfrom0to2.\"}}"
 	var data events.CloudWatchEvent
 	err := json.Unmarshal([]byte(s), &data)
@@ -754,7 +754,7 @@ func TestCloudWatchEventsEC2Lanuch(t *testing.T) {
 	}
 	logs := parseCloudWatchEvents(data)
 
-	assert.Len(t, logs, 0)
+	assert.Len(t, logs, 1)
 }
 
 func TestCustomMetadataFromJsonEvent(t *testing.T) {
@@ -785,4 +785,40 @@ func TestCloudWatchLogMetadataExtraction(t *testing.T) {
 	assert.Equal(t, cloudWatchLogMetaDataMap["logGroup"], "dummyloggroup")
 	assert.Equal(t, cloudWatchLogMetaDataMap["logStream"], "dummyLogStream")
 
+}
+
+func TestCloudWatchEventsS3Else(t *testing.T) {
+	var s = "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"ObjectCreated\",\"source\":\"aws.s3\",\"account\":\"123456789012\",\"time\":\"2021-11-12T00:00:00Z\",\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"example-bucket\"},\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\",\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"00617F08299329D189\"},\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\",\"reason\":\"PutObject\"}}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.s3"}
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"ObjectCreated\",\"source\":\"aws.s3\",\"account\":\"123456789012\",\"time\":\"2021-11-12T00:00:00Z\",\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"example-bucket\"},\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\",\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"00617F08299329D189\"},\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\",\"reason\":\"PutObject\"}}",
+		Timestamp:  time.Date(2021, time.November, 12, 0, 0, 0, 0, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::example-bucket"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsEC2Else(t *testing.T) {
+	var s = "{\"account\":\"280443500820\",\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"},\"detail-type\":\"EC2InstanceState-changeNotification\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"source\":\"aws.ec2\",\"time\":\"2023-09-04T10:45:46Z\",\"version\":\"0\"}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		fmt.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.ec2"}
+	expectedLMEvent := ingest.Log{
+		Message:    "{\"version\":\"0\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"detail-type\":\"EC2InstanceState-changeNotification\",\"source\":\"aws.ec2\",\"account\":\"280443500820\",\"time\":\"2023-09-04T10:45:46Z\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"}}",
+		Timestamp:  time.Date(2023, time.September, 4, 10, 45, 46, 0, time.Local),
+		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
 }

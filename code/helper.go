@@ -14,6 +14,12 @@ func ExtractEnvironmentVariables() {
 
 	useSecretManager = os.Getenv("USE_SECRET_MANAGER")
 
+	if os.Getenv("DEBUG") == "true" {
+		debug = true
+	} else {
+		debug = false
+	}
+
 	if useSecretManager == "true" {
 		if debug {
 			log.Println("Using Secrets Manager to store LM credentials")
@@ -36,20 +42,13 @@ func ExtractEnvironmentVariables() {
 
 	}
 
-	lmHost = os.Getenv("LM_HOST")
 	companyName = os.Getenv("LM_COMPANY_NAME")
 	defaultMetadata := os.Getenv("METADATA")
 
 	metadataArray = strings.Split(defaultMetadata, ",")
 
-	if lmHost == "" && companyName == "" {
+	if companyName == "" {
 		log.Fatalf("missing company name")
-	}
-
-	if os.Getenv("DEBUG") == "true" {
-		debug = true
-	} else {
-		debug = false
 	}
 
 	scrubRegex = os.Getenv("LM_SCRUB_REGEX")

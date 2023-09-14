@@ -3,7 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -313,7 +313,7 @@ func TestParseCloudfrontlogs(t *testing.T) {
 	w := gzip.NewWriter(f)
 	_, err := w.Write([]byte(logMsg))
 	if err != nil {
-		fmt.Println("Error in writing log in file")
+		log.Println("Error in writing log in file")
 	}
 	w.Close()
 
@@ -322,7 +322,7 @@ func TestParseCloudfrontlogs(t *testing.T) {
 	result := make([]byte, 100)
 	_, err = f.Read(result)
 	if err != nil {
-		fmt.Println("Error in reading from file")
+		log.Println("Error in reading from file")
 	}
 	defer f.Close()
 
@@ -398,7 +398,7 @@ func TestElbGzipLogs(t *testing.T) {
 	w := gzip.NewWriter(f)
 	_, err := w.Write([]byte(logMsg))
 	if err != nil {
-		fmt.Println("Error in writing log in file")
+		log.Println("Error in writing log in file")
 	}
 	w.Close()
 
@@ -407,7 +407,7 @@ func TestElbGzipLogs(t *testing.T) {
 	result := make([]byte, 512)
 	_, err = f.Read(result)
 	if err != nil {
-		fmt.Println("Error in reading from file")
+		log.Println("Error in reading from file")
 	}
 	defer f.Close()
 
@@ -657,7 +657,7 @@ func TestCloudTrailLogsEC2(t *testing.T) {
 	var data events.CloudwatchLogsData
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudTrailLogs(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "ec2.amazonaws.com"}
@@ -675,7 +675,7 @@ func TestCloudTrailLogsSQS(t *testing.T) {
 	var data events.CloudwatchLogsData
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudTrailLogs(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "sqs.amazonaws.com"}
@@ -693,7 +693,7 @@ func TestParseCloudtrailLogsS3ForARN(t *testing.T) {
 	var data events.CloudwatchLogsData
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudTrailLogs(data)
 
@@ -714,7 +714,7 @@ func TestCloudWatchEventsS3(t *testing.T) {
 	var data events.CloudWatchEvent
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.amazonaws.com"}
@@ -732,7 +732,7 @@ func TestCloudWatchEventsLambda(t *testing.T) {
 	var data events.CloudWatchEvent
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "lambda.amazonaws.com"}
@@ -750,7 +750,7 @@ func TestCloudWatchEventsEC2Launch(t *testing.T) {
 	var data events.CloudWatchEvent
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudWatchEvents(data)
 
@@ -762,7 +762,7 @@ func TestCustomMetadataFromJsonEvent(t *testing.T) {
 	jsonKeys := []string{"account", "detail.additionalEventData.AuthenticationMethod", "detail.resources.[0].type"}
 	customMetadataMap := make(map[string]interface{})
 	addCustomMetadataFromRawJson(customMetadataMap, testString, jsonKeys)
-	fmt.Println(customMetadataMap)
+	log.Println(customMetadataMap)
 	assert.Equal(t, customMetadataMap["account"], "280443500820")
 	assert.Equal(t, customMetadataMap["detail.additionalEventData.AuthenticationMethod"], "AuthHeader")
 	assert.Equal(t, customMetadataMap["detail.resources.[0].type"], "AWS::S3::Object")
@@ -792,7 +792,7 @@ func TestCloudWatchEventsS3Else(t *testing.T) {
 	var data events.CloudWatchEvent
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.s3"}
@@ -810,7 +810,7 @@ func TestCloudWatchEventsEC2Else(t *testing.T) {
 	var data events.CloudWatchEvent
 	err := json.Unmarshal([]byte(s), &data)
 	if err != nil {
-		fmt.Println("error in unmarshal")
+		log.Println("error in unmarshal")
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.ec2"}

@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -13,8 +12,7 @@ import (
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
-var lmHost, awsRegion, scrubRegex, logSource, versionID, useSecretManager string
-var accessID, accessKey, bearerToken, companyName string
+var awsRegion, scrubRegex, logSource, versionID, useSecretManager, accessID, accessKey, bearerToken, companyName string
 var debug bool
 
 func getCompany() string {
@@ -22,9 +20,7 @@ func getCompany() string {
 		return companyName
 	}
 
-	r := regexp.MustCompile(`https://([^\.]*).logicmonitor.com`)
-	result := r.FindStringSubmatch(lmHost)
-	return result[1]
+	return ""
 }
 
 func SendLogs(logs []ingest.Log) {
@@ -44,8 +40,8 @@ func SendLogs(logs []ingest.Log) {
 
 	if debug || !ingestResponse.Success {
 		json, _ := json.Marshal(ingestResponse)
-		fmt.Printf("Response: %s\n", string(json))
-		fmt.Println(string(json))
+		log.Printf("Response: %s\n", string(json))
+		log.Println(string(json))
 	}
 }
 
@@ -93,8 +89,8 @@ func ExtractLogs(data interface{}) []ingest.Log {
 
 	if debug {
 		json, _ := json.Marshal(data)
-		fmt.Printf("Event Recieved: %s\n", string(json))
-		fmt.Printf("Source: %s\n", source)
+		log.Printf("Event Recieved: %s\n", string(json))
+		log.Printf("Source: %s\n", source)
 	}
 
 	switch source {
@@ -108,7 +104,7 @@ func ExtractLogs(data interface{}) []ingest.Log {
 		s3Event := convertToS3Event(data)
 		logs, err = parseELBlogs(s3Event, getContentsFromS3Bucket)
 		if err != nil {
-			fmt.Printf("WARN failed to parse elb logs %s\n", err)
+			log.Printf("WARN failed to parse elb logs %s\n", err)
 		}
 	case "cloudwatchEvents":
 		cloudwatchEvents := convertToCloudWatchEvent(data)
@@ -120,6 +116,7 @@ func ExtractLogs(data interface{}) []ingest.Log {
 // Lambda handler
 func handler(request interface{}) {
 	ExtractEnvironmentVariables()
+
 	logs := ExtractLogs(request)
 	ScrubLogsWithRegex(logs)
 	SendLogs(logs)

@@ -9,11 +9,15 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
 )
 
 var awsRegion, scrubRegex, logSource, versionID, useSecretManager, accessID, accessKey, bearerToken, companyName string
 var debug bool
+var sessionNew *session.Session
+var s3Manager *s3.S3
 
 func getCompany() string {
 	if companyName != "" {
@@ -116,7 +120,8 @@ func ExtractLogs(data interface{}) []ingest.Log {
 // Lambda handler
 func handler(request interface{}) {
 	ExtractEnvironmentVariables()
-
+	sessionNew = session.Must(session.NewSession())
+	s3Manager = s3.New(sessionNew)
 	logs := ExtractLogs(request)
 	ScrubLogsWithRegex(logs)
 	SendLogs(logs)

@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: Pushes logs from AWS to Logic Monitor logs endpoint.
+Description: Pushes logs from AWS to LogicMonitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
@@ -75,17 +75,17 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
-    Description: The LM API tokens access ID
+    Description: The LogicMonitor API tokens access ID
   LMAccessKey:
     Type: String
     NoEcho: true
     Default: ""
-    Description: The LM API tokens access key
+    Description: The LogicMonitor API tokens access key
   LMBearerToken:
     Type: String
     NoEcho: true
     Default: ""
-    Description: The LM API Bearer token. (You must specify LMBearerToken if not providing LMAccessId, LMAccessKey. In case you provide all, LMAccessId and LMAccessKey will be used to authenticate with Logicmonitor.  )
+    Description: The LogicMonitor API Bearer token. (You must specify LMBearerToken if not providing LMAccessId, LMAccessKey. In case you provide all, LMAccessId and LMAccessKey will be used to authenticate with Logicmonitor.  )
   Metadata:
     Type: CommaDelimitedList
     Description: Metadata if any
@@ -319,21 +319,21 @@ Resources:
     Type: AWS::SecretsManager::Secret
     Condition: CreateSecretAccess
     Properties:
-      Description: Logic Monitor Access Key
+      Description: LogicMonitor Access Key
       SecretString:
         Ref: LMAccessKey
   AccessIdSecret:
     Type: AWS::SecretsManager::Secret
     Condition: CreateSecretAccess
     Properties:
-      Description: Logic Monitor Access Id
+      Description: LogicMonitor Access Id
       SecretString:
         Ref: LMAccessId
   BearerTokenSecret:
     Type: AWS::SecretsManager::Secret
     Condition: CreateSecretBearerToken
     Properties:
-      Description: Logic Monitor Bearer Token
+      Description: LogicMonitor Bearer Token
       SecretString:
         Ref: LMBearerToken
 Conditions:
@@ -357,7 +357,7 @@ Conditions:
     - !Condition CreateSecretManager
 Outputs:
   LMForwarderArn:
-    Description: Logic Monitor Forwarder Lambda Function ARN
+    Description: LogicMonitor Forwarder Lambda Function ARN
     Value:
       Fn::GetAtt:
         - Forwarder

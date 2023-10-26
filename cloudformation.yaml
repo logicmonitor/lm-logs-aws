@@ -143,10 +143,10 @@ Resources:
       FunctionName:
         Ref: FunctionName
       Description: Pushes aws logs to Logic Monitor log endpoint.
-      Handler: main
+      Handler: bootstrap
       MemorySize:
         Ref: FunctionMemorySize
-      Runtime: go1.x
+      Runtime: provided.al2
       CodeUri:
         Bucket: !Ref ForwarderZipsBucket
         Key: main.zip

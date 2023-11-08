@@ -9,8 +9,8 @@ RUN go mod download
 COPY code/* /code/
 
 FROM base as build
-RUN go build -o main *.go \
-    && zip lambda.zip main
+RUN go build -o bootstrap *.go \
+    && zip lambda.zip bootstrap
 
 FROM base as test
 RUN go test

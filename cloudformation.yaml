@@ -4,7 +4,7 @@ Description: Pushes logs from AWS to LogicMonitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.3.0
+      Version: 1.4.0
   RegionToLayerArnMap:
     us-east-1:
       "LayerArn": "arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
@@ -143,10 +143,10 @@ Resources:
       FunctionName:
         Ref: FunctionName
       Description: Pushes aws logs to Logic Monitor log endpoint.
-      Handler: main
+      Handler: bootstrap
       MemorySize:
         Ref: FunctionMemorySize
-      Runtime: go1.x
+      Runtime: provided.al2
       CodeUri:
         Bucket: !Ref ForwarderZipsBucket
         Key: main.zip

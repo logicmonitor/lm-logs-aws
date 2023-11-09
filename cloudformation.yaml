@@ -265,7 +265,7 @@ Resources:
             s3 = boto3.client('s3')
             filename = "main.zip"
             with urllib.request.urlopen(source_zip_url) as data:
-                s3.upload_fileobj(data, dest_zips_bucket, filename)
+                s3.upload_fileobj(data, dest_zips_bucket, filename, ExtraArgs={'ServerSideEncryption':'AES256'})
         def timeout(event, context):
             logger.error('Execution is about to time out, sending failure response to CloudFormation')
             send_cfn_resp(event, context, 'FAILED')

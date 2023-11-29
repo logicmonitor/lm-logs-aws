@@ -96,7 +96,11 @@ Parameters:
   MetadataKeysForJsonLogs:
     Type: CommaDelimitedList
     Description: Json keys to include in event metadata for cloudtaril logs and cloudwatch logs of json type
-
+    Default: ""
+  LMTenantIdentifier:
+    Type: String
+    Description: LogicMonitor Tenant Identifier send in the metadata with logs to LogicMonitor portal
+    Default: ""
   UseSecretManagerForStoringSecrets:
     Type: String
     Description: If true it will use secrets manager and cache the credentials which can incur cost to secrets manager.If false it will use enviromental variables
@@ -171,6 +175,8 @@ Resources:
             Ref: UseSecretManagerForStoringSecrets
           JSON_METADATA_KEYS: !Join [",", !Ref MetadataKeysForJsonLogs]
           ADD_CLOUDWATCH_METADATA: "true"
+          LM_TENANT_IDENTIFIER:
+            Ref: LMTenantIdentifier
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -378,6 +384,7 @@ Metadata:
           - LMBearerToken
           - LMRegexScrub
           - MetadataKeysForJsonLogs
+          - LMTenantIdentifier
       - Label:
           default: Lambda Function (Optional)
         Parameters:

@@ -383,10 +383,13 @@ Metadata:
           - LMAccessKey
           - LMBearerToken
           - LMRegexScrub
-          - MetadataKeysForJsonLogs
-          - LMTenantIdentifier
+          - UseSecretManagerForStoringSecrets
       - Label:
           default: Lambda Function (Optional)
         Parameters:
+          - Metadata
+          - MetadataKeysForJsonLogs
+          - LMTenantIdentifier
           - FunctionMemorySize
           - FunctionTimeoutInSeconds
+          

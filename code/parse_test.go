@@ -19,6 +19,7 @@ func TestParseELBlogs(t *testing.T) {
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "elb.amazonaws.com"}
 
 	t.Run("parse elb log without prefix", func(t *testing.T) {
+
 		message := "2020-05-11T09:24:27.754579Z test 78.82.62.133:64107 172.40.0.85:80 0.00005 0.000852 0.000027 304 304 0 0 \"GET http://test-56808838.eu-west-1.elb.amazonaws.com:80/ HTTP/1.1\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36\" - -"
 		fileName := "AWSLogs/123123123123/elasticloadbalancing/us-west-1/2020/06/02/123123123123_elasticloadbalancing_us-west-1_test_20200511T0925Z_34.242.46.46_4jtxqo72.txt"
 		time, _ := time.Parse(time.RFC3339, "2020-04-08T15:08:34+02:00")
@@ -806,6 +807,9 @@ func TestCloudWatchEventsS3Else(t *testing.T) {
 }
 
 func TestCloudWatchEventsEC2Else(t *testing.T) {
+	t.Setenv("LM_TENANT_IDENTIFIER", "123456")
+	t.Setenv("LM_COMPANY_NAME", "test")
+	ExtractEnvironmentVariables()
 	var s = "{\"account\":\"280443500820\",\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"},\"detail-type\":\"EC2InstanceState-changeNotification\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"source\":\"aws.ec2\",\"time\":\"2023-09-04T10:45:46Z\",\"version\":\"0\"}"
 	var data events.CloudWatchEvent
 	err := json.Unmarshal([]byte(s), &data)
@@ -813,7 +817,7 @@ func TestCloudWatchEventsEC2Else(t *testing.T) {
 		log.Println("error in unmarshal")
 	}
 	logs := parseCloudWatchEvents(data)
-	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.ec2"}
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.ec2", "_lm.tenantId": "123456"}
 	expectedLMEvent := ingest.Log{
 		Message:    "{\"version\":\"0\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"detail-type\":\"EC2InstanceState-changeNotification\",\"source\":\"aws.ec2\",\"account\":\"280443500820\",\"time\":\"2023-09-04T10:45:46Z\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"}}",
 		Timestamp:  time.Date(2023, time.September, 4, 10, 45, 46, 0, time.Local),

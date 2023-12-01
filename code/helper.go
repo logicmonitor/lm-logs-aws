@@ -66,6 +66,8 @@ func ExtractEnvironmentVariables() {
 	if err == nil {
 		addCloudWatchMetadata = addCWM
 	}
+
+	lmTenantID = os.Getenv("LM_TENANT_IDENTIFIER")
 }
 
 func readCloserToString(body io.ReadCloser) string {

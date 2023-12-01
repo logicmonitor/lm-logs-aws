@@ -19,6 +19,7 @@ import (
 var defaultJsonMetadataKeys []string
 var addCloudWatchMetadata = false
 var metadataArray []string
+var lmTenantID string
 var goJsonQ = jsonq.New()
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
@@ -270,6 +271,9 @@ func extractMetadataForCloudTrail(message string) map[string]interface{} {
 		metadataMap["_type"] = fmt.Sprintf(eventSourceRegexArray[eventSourceRegex])
 	}
 	addCustomMetadataFromRawJson(metadataMap, message, defaultJsonMetadataKeys)
+	if strings.TrimSpace(lmTenantID) != "" {
+		metadataMap["_lm.tenantId"] = lmTenantID
+	}
 	return metadataMap
 }
 
@@ -285,6 +289,10 @@ func extractMetadata(region string, arn string, eventsource string) map[string]i
 		}
 	}
 	metadataMap["_type"] = eventsource
+	if strings.TrimSpace(lmTenantID) != "" {
+		metadataMap["_lm.tenantId"] = lmTenantID
+	}
+
 	return metadataMap
 }
 

@@ -163,12 +163,12 @@ Resources:
             - Ref: AWS::NoValue
       Environment:
         Variables:
-          LM_COMPANY_NAME:
+          LM_ACCOUNT:
             Ref: LMCompanyName
           METADATA: !Join [",", !Ref Metadata]
-          LM_ACCESS_ID: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessIdSecret, !Ref LMAccessId],  ""] #!Ref AccessIdSecret, !If [UseLMV1ForAuth, !Ref LMAccessId, "" ]
-          LM_ACCESS_KEY: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessKeySecret, !Ref LMAccessKey],  ""]
-          LM_BEARER_TOKEN: !If [MustUseBearerTokenForAuth, !If [CreateSecretManager, !Ref BearerTokenSecret, !Ref LMBearerToken],  ""]
+          LOGICMONITOR_ACCESS_ID: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessIdSecret, !Ref LMAccessId],  ""] #!Ref AccessIdSecret, !If [UseLMV1ForAuth, !Ref LMAccessId, "" ]
+          LOGICMONITOR_ACCESS_KEY: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessKeySecret, !Ref LMAccessKey],  ""]
+          LOGICMONITOR_BEARER_TOKEN: !If [MustUseBearerTokenForAuth, !If [CreateSecretManager, !Ref BearerTokenSecret, !Ref LMBearerToken],  ""]
           LM_SCRUB_REGEX:
             Ref: LMRegexScrub
           USE_SECRET_MANAGER:

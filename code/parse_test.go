@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
-
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/logicmonitor/lm-data-sdk-go/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,10 +51,10 @@ func TestParseELBlogs(t *testing.T) {
 		lmEvents, _ := parseELBlogs(s3Event, getContentsFromS3BucketMock)
 
 		//Assertion
-		expectedLMEvent := ingest.Log{
+		expectedLMEvent := model.LogInput{
 			Message:    message,
-			Timestamp:  time,
-			ResourceID: map[string]string{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+			Timestamp:  time.String(),
+			ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
 			Metadata:   metadataMap,
 		}
 
@@ -95,10 +94,10 @@ func TestParseELBlogs(t *testing.T) {
 		lmEvents, _ := parseELBlogs(s3Event, getContentsFromS3BucketMock)
 
 		//Assertion
-		expectedLMEvent := ingest.Log{
+		expectedLMEvent := model.LogInput{
 			Message:    message,
-			Timestamp:  time,
-			ResourceID: map[string]string{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+			Timestamp:  time.String(),
+			ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
 			Metadata:   metadataMap,
 		}
 
@@ -142,10 +141,10 @@ func TestParseS3logs(t *testing.T) {
 
 	//Assertion
 
-	expectedlmEvent := ingest.Log{
+	expectedlmEvent := model.LogInput{
 		Message:    "a OriginBucket c",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::OriginBucket"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::OriginBucket"},
 		Metadata:   metadataMap,
 	}
 
@@ -164,10 +163,10 @@ func TestParseCloudWatchlogs(t *testing.T) {
 	lmEvents := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1586351314000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "Apr  8 13:08:34 ip-172-40-0-227 dhclient[2221]: XMT: Solicit on eth0, interval 71330ms.",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::664833354492:instance/i-01fb3c5139e4b27bb"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::664833354492:instance/i-01fb3c5139e4b27bb"},
 		Metadata:   metadataMap,
 	}
 
@@ -185,10 +184,10 @@ func TestRDSLogs(t *testing.T) {
 	lmEvents := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1596584764000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2020-08-04 23:46:04 UTC::@:[5275]:LOG:  checkpoint starting: time",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:rds::664833354492:db:database-1"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:rds::664833354492:db:database-1"},
 		Metadata:   metadataMap,
 	}
 
@@ -207,10 +206,10 @@ func TestRDSEnhancedLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1596671721000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"engine\":\"MYSQL\",\"instanceID\":\"database-2\",\"instanceResourceID\":\"db-3AA6AU62HV6KOH2W6IU7IN6I4Q\",\"timestamp\":\"2020-08-05T23:55:21Z\",\"version\":1,\"uptime\":\"00:20:17\",\"numVCPUs\":1,\"cpuUtilization\":{\"guest\":0.0,\"irq\":0.0,\"system\":0.8,\"wait\":0.2,\"idle\":97.3,\"user\":1.6,\"total\":2.7,\"steal\":0.1,\"nice\":0.0},\"loadAverageMinute\":{\"one\":0.0,\"five\":0.0,\"fifteen\":0.0},\"memory\":{\"writeback\":0,\"hugePagesFree\":0,\"hugePagesRsvd\":0,\"hugePagesSurp\":0,\"cached\":435728,\"hugePagesSize\":2048,\"free\":100836,\"hugePagesTotal\":0,\"inactive\":294920,\"pageTables\":3476,\"dirty\":280,\"mapped\":61940,\"active\":524112,\"total\":1019328,\"slab\":42776,\"buffers\":25824},\"tasks\":{\"sleeping\":96,\"zombie\":0,\"running\":0,\"stopped\":0,\"total\":96,\"blocked\":0},\"swap\":{\"cached\":0,\"total\":4095996,\"free\":4095996,\"in\":0.0,\"out\":0.0},\"network\":[{\"interface\":\"eth0\",\"rx\":654.28,\"tx\":2893.35}],\"diskIO\":[{\"writeKbPS\":5.13,\"readIOsPS\":0.17,\"await\":0.71,\"readKbPS\":0.67,\"rrqmPS\":0.0,\"util\":0.04,\"avgQueueLen\":0.0,\"tps\":1.4,\"readKb\":40,\"device\":\"rdsdev\",\"writeKb\":308,\"avgReqSz\":8.29,\"wrqmPS\":0.0,\"writeIOsPS\":1.23},{\"writeKbPS\":27.4,\"readIOsPS\":0.17,\"await\":0.32,\"readKbPS\":0.67,\"rrqmPS\":0.0,\"util\":0.08,\"avgQueueLen\":0.0,\"tps\":2.53,\"readKb\":40,\"device\":\"filesystem\",\"writeKb\":1644,\"avgReqSz\":22.16,\"wrqmPS\":2.27,\"writeIOsPS\":2.37}],\"physicalDeviceIO\":[{\"writeKbPS\":5.13,\"readIOsPS\":1.17,\"await\":0.48,\"readKbPS\":4.67,\"rrqmPS\":0.0,\"util\":0.08,\"avgQueueLen\":0.0,\"tps\":1.67,\"readKb\":280,\"device\":\"xvdg\",\"writeKb\":308,\"avgReqSz\":11.76,\"wrqmPS\":0.68,\"writeIOsPS\":0.5}],\"fileSys\":[{\"used\":379496,\"name\":\"\",\"usedFiles\":210,\"usedFilePercent\":0.02,\"maxFiles\":1310720,\"mountPoint\":\"/rdsdbdata\",\"total\":20496340,\"usedPercent\":1.85},{\"used\":2172928,\"name\":\"\",\"usedFiles\":75334,\"usedFilePercent\":11.5,\"maxFiles\":655360,\"mountPoint\":\"/\",\"total\":10190104,\"usedPercent\":21.32}],\"processList\":[{\"vss\":760392,\"name\":\"OS processes\",\"tgid\":0,\"parentID\":0,\"memoryUsedPc\":3.67,\"cpuUsedPc\":0.02,\"id\":0,\"rss\":37452,\"vmlimit\":0},{\"vss\":2148212,\"name\":\"RDS processes\",\"tgid\":0,\"parentID\":0,\"memoryUsedPc\":26.49,\"cpuUsedPc\":1.47,\"id\":0,\"rss\":270036,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4745,\"rss\":154532,\"vmlimit\":\"unlimited\"},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4748,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4749,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4750,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4751,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4752,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4753,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4754,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4755,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4756,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4757,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4758,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.15,\"id\":4759,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4760,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4761,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4762,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4763,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4764,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4765,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4766,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4767,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4780,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4782,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4784,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4785,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4786,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4788,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4789,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4790,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4791,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4795,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4796,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4797,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4798,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4799,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4814,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4867,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.05,\"id\":5100,\"rss\":154532,\"vmlimit\":0}]}",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:rds::664833354492:db:database-2"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:rds::664833354492:db:database-2"},
 		Metadata:   metadataMap,
 	}
 
@@ -229,10 +228,10 @@ func TestLambdaLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1598517709043*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "START RequestId: b8cf7efa-a997-4a31-a1ff-881feee2273e Version: $LATEST\n",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:lambda::197152445587:function:observatory-worker"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:lambda::197152445587:function:observatory-worker"},
 		Metadata:   metadataMap,
 	}
 
@@ -250,10 +249,10 @@ func TestEC2FlowLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1616399355000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "i-067b718e521cdf437 197152445587 eni-071fbace220860313 52.119.221.63 10.134.7.224 443 45224 6 18 6689 1616399355 1616399414 ACCEPT OK",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-067b718e521cdf437"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-067b718e521cdf437"},
 		Metadata:   metadataMap,
 	}
 
@@ -271,10 +270,10 @@ func TestNATFlowLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1617877079000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2 197152445587 eni-16105f5a 10.134.1.163 10.134.5.180 1382 56061 6 1 40 1617877079 1617877138 ACCEPT OK",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-16105f5a"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.networkInterfaceId": "eni-16105f5a"},
 		Metadata:   metadataMap,
 	}
 
@@ -335,10 +334,10 @@ func TestParseCloudfrontlogs(t *testing.T) {
 
 	lmEvents := parseS3logs(s3Event, getContentsFromS3BucketMock)
 
-	expectedlmEvent := ingest.Log{
+	expectedlmEvent := model.LogInput{
 		Message:    "Test the Cloudfront logs",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::CloudfrontLogBucket"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::CloudfrontLogBucket"},
 		Metadata:   metadataMap,
 	}
 
@@ -357,10 +356,10 @@ func TestParseCloudtrailLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1618555235714*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/LogicMonitor_119/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJVBZZRIN7\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4\",\"arn\":\"arn:aws:iam::197152445587:role/LogicMonitor_119\",\"accountId\":\"197152445587\",\"userName\":\"LogicMonitor_119\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-16T06:03:12Z\"}}},\"eventTime\":\"2021-04-16T06:27:05Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"DescribeInstanceStatus\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.221.10.3\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"errorCode\":\"Client.RequestLimitExceeded\",\"errorMessage\":\"Request limit exceeded.\",\"requestParameters\":{\"instancesSet\":{\"items\":[{\"instanceId\":\"i-0d345eec77c8a08b1\"}]},\"filterSet\":{},\"includeAllInstances\":false},\"responseElements\":null,\"requestID\":\"23b2ea29-b7b1-449f-a584-035f485f05cf\",\"eventID\":\"703a3ad3-3d3d-4bd1-8637-3692f850e857\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-0d345eec77c8a08b1"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-0d345eec77c8a08b1"},
 		Metadata:   metadataMap,
 	}
 
@@ -422,10 +421,10 @@ func TestElbGzipLogs(t *testing.T) {
 	lmEvents, _ := parseELBlogs(s3Event, getContentsFromS3BucketMock)
 
 	//Assertion
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    message,
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
 		Metadata:   metadataMap,
 	}
 
@@ -450,10 +449,10 @@ func TestParseKinesisFirehoseLogs(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 26, 5, 45, 15, 228000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/LogicMonitor_119/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJ5UWDCK2J\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4\",\"arn\":\"arn:aws:iam::197152445587:role/LogicMonitor_119\",\"accountId\":\"197152445587\",\"userName\":\"LogicMonitor_119\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-26T05:23:11Z\"}}},\"eventTime\":\"2021-04-26T05:30:50Z\",\"eventSource\":\"firehose.amazonaws.com\",\"eventName\":\"DescribeDeliveryStream\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.214.159.46\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"errorCode\":\"ResourceNotFoundException\",\"errorMessage\":\"Firehose firehosedelievery under account 197152445587 not found.\",\"requestParameters\":{\"deliveryStreamName\":\"firehosedelievery\"},\"responseElements\":null,\"requestID\":\"dd1d624c-66ab-9056-841d-300639f2b022\",\"eventID\":\"f25e9886-5059-4b07-90d1-d29a965c0a0f\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/firehosedelievery"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/firehosedelievery"},
 		Metadata:   metadataMap,
 	}
 
@@ -476,10 +475,10 @@ func TestKinesisFirehoseErrorLog(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 26, 9, 46, 43, 219000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "Test Log for kinesis firehose",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/dataFirehose"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/dataFirehose"},
 		Metadata:   metadataMap,
 	}
 
@@ -503,10 +502,10 @@ func TestKinesisDataStreamLog(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 27, 8, 55, 50, 324000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/BhushanPuriPortal/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJV4QL3KY6\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU\",\"arn\":\"arn:aws:iam::197152445587:role/BhushanPuriPortal\",\"accountId\":\"197152445587\",\"userName\":\"BhushanPuriPortal\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-27T08:34:28Z\"}}},\"eventTime\":\"2021-04-27T08:39:15Z\",\"eventSource\":\"kinesis.amazonaws.com\",\"eventName\":\"ListTagsForStream\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.220.47.95\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"requestParameters\":{\"streamName\":\"kinesisTestSream\"},\"responseElements\":null,\"requestID\":\"f85f8e09-9fda-a448-a15e-41fa3263205e\",\"eventID\":\"d815bd8e-1016-46a6-8f68-608a42b9b7d3\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:kinesis::197152445587:stream/kinesisTestSream"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:kinesis::197152445587:stream/kinesisTestSream"},
 		Metadata:   metadataMap,
 	}
 
@@ -528,10 +527,10 @@ func TestECSLog(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 30, 8, 47, 41, 663000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJQUWVOXM6Y:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/lmngstockholm/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJ57ASTCJ6\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJQUWVOXM6Y\",\"arn\":\"arn:aws:iam::197152445587:role/lmngstockholm\",\"accountId\":\"197152445587\",\"userName\":\"lmngstockholm\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-30T08:30:58Z\"}}},\"eventTime\":\"2021-04-30T08:39:02Z\",\"eventSource\":\"ecs.amazonaws.com\",\"eventName\":\"ListTagsForResource\",\"awsRegion\":\"us-west-1\",\"sourceIPAddress\":\"34.219.122.65\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"requestParameters\":{\"resourceArn\":\"arn:aws:ecs:us-west-1:197152445587:cluster/CVTestCluster\"},\"responseElements\":{\"tags\":[{\"key\":\"testKey\",\"value\":\"testValue\"}]},\"requestID\":\"ad778dc0-1c40-4599-a1d6-5bbbee2d17c2\",\"eventID\":\"f53bf60c-3b8b-4304-9a80-cacd7b02a275\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ecs::197152445587:cluster/CVTestCluster"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ecs::197152445587:cluster/CVTestCluster"},
 		Metadata:   metadataMap,
 	}
 
@@ -555,10 +554,10 @@ func TestELBlowLogs(t *testing.T) {
 		timeValue = time.Date(2021, time.June, 03, 9, 48, 58, 000000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2 197152445587 eni-0c6023b6cde8706ea 162.142.125.148 10.134.5.120 51125 12196 6 1 44 1622713738 1622713738 ACCEPT OK",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-0c6023b6cde8706ea"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.networkInterfaceId": "eni-0c6023b6cde8706ea"},
 		Metadata:   metadataMap,
 	}
 
@@ -582,10 +581,10 @@ func TestRDSFlowLogs(t *testing.T) {
 		timeValue = time.Date(2021, time.July, 22, 07, 9, 10, 000000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2 148849679107 eni-09c6cfd662c38fd4d - - - - - - - 1626937750 1626937809 - NODATA",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-09c6cfd662c38fd4d"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.networkInterfaceId": "eni-09c6cfd662c38fd4d"},
 		Metadata:   metadataMap,
 	}
 
@@ -605,10 +604,10 @@ func TestFargateLog(t *testing.T) {
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
 		timeValue = time.Date(2022, time.February, 18, 5, 57, 07, 341000000, time.Local)
 	}
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "520: Fri Feb 18 05:57:07 UTC 2022",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.accountid": "148849679107", "system.cloud.category": "AWS/LMAccount"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.accountid": "148849679107", "system.cloud.category": "AWS/LMAccount"},
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -624,10 +623,10 @@ func TestParseCloudtrailLogsS3(t *testing.T) {
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.amazonaws.com"}
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"cloudtrail.amazonaws.com\"},\"eventTime\":\"2023-03-03T07:30:04Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"GetBucketAcl\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"cloudtrail.amazonaws.com\",\"userAgent\":\"cloudtrail.amazonaws.com\",\"requestParameters\":{\"bucketName\":\"aws-cloudtrail-logs-700010466334-8d075b05\",\"Host\":\"aws-cloudtrail-logs-700010466334-8d075b05.s3.us-east-1.amazonaws.com\",\"acl\":\"\"},\"responseElements\":null,\"additionalEventData\":{\"SignatureVersion\":\"SigV4\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"bytesTransferredIn\":0,\"AuthenticationMethod\":\"AuthHeader\",\"x-amz-id-2\":\"La8vQCxEf9pcqy/H8Y7Rs7aULfw0Qkc0EI+uKOFTyuMu8of/2a/yvPO6hKck3V5YaGneBCVwzkw=\",\"bytesTransferredOut\":568},\"requestID\":\"TAQNDGTZC32834P4\",\"eventID\":\"2514d9c5-5365-4b24-ac86-241dea825ad6\",\"readOnly\":true,\"resources\":[{\"accountId\":\"700010466334\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"700010466334\",\"sharedEventID\":\"59523b9c-953d-4110-b4d5-b8209621af88\",\"eventCategory\":\"Management\"}",
-		Timestamp:  time.Date(2023, time.March, 3, 7, 30, 27, 87000000, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05"},
+		Timestamp:  time.Date(2023, time.March, 3, 7, 30, 27, 87000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05"},
 		Metadata:   metadataMap,
 	}
 
@@ -643,10 +642,10 @@ func TestParseCloudtrailLogsLambda(t *testing.T) {
 
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "lambda.amazonaws.com"}
 	logs := parseCloudWatchLogs(cloudWatchEvent)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"logs.amazonaws.com\"},\"eventTime\":\"2023-03-08T10:59:01Z\",\"eventSource\":\"lambda.amazonaws.com\",\"eventName\":\"Invoke\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceArn\":\"arn:aws:logs:us-east-1:280443500820:log-group:/aws/cloudtrail:*\",\"sourceAccount\":\"280443500820\"},\"responseElements\":null,\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder:$LATEST\"},\"requestID\":\"fe232070-e23a-4a51-bef4-ab16a95e7b8c\",\"eventID\":\"d833caf0-489d-4692-a286-55dc26e76c5a\",\"readOnly\":false,\"resources\":[{\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\",\"ARN\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":false,\"recipientAccountId\":\"280443500820\",\"sharedEventID\":\"6d1d2f9c-d3d7-4932-9c1a-52555a843990\",\"eventCategory\":\"Data\"}",
-		Timestamp:  time.Date(2023, time.March, 8, 11, 4, 20, 239000000, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder"},
+		Timestamp:  time.Date(2023, time.March, 8, 11, 4, 20, 239000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder"},
 		Metadata:   metadataMap,
 	}
 
@@ -662,10 +661,10 @@ func TestCloudTrailLogsEC2(t *testing.T) {
 	}
 	logs := parseCloudTrailLogs(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "ec2.amazonaws.com"}
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\",\"arn\":\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\",\"accountId\":\"123456678\",\"accessKeyId\":\"ASIAUCS54HEKDHXBQTVJ\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAUCS54HEKDKHAECU5N\",\"arn\":\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\",\"accountId\":\"123456678\",\"userName\":\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\"},\"webIdFederationData\":{},\"attributes\":{\"creationDate\":\"2023-05-23T05:07:33Z\",\"mfaAuthenticated\":\"false\"}}},\"eventTime\":\"2023-05-23T05:36:11Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"DescribeInstanceAttribute\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"49.207.217.191\",\"userAgent\":\"AWSInternal\",\"requestParameters\":{\"instanceId\":\"i-0d51cd459226160ac\",\"attribute\":\"disableApiTermination\"},\"responseElements\":null,\"requestID\":\"468e0670-30d9-4ef7-ab75-648c03d63371\",\"eventID\":\"78294249-5828-4dde-8b53-49f81d715b95\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456678\",\"eventCategory\":\"Management\",\"sessionCredentialFromConsole\":\"true\"}",
-		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::123456678:instance/i-0d51cd459226160ac"},
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::123456678:instance/i-0d51cd459226160ac"},
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -680,10 +679,10 @@ func TestCloudTrailLogsSQS(t *testing.T) {
 	}
 	logs := parseCloudTrailLogs(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "sqs.amazonaws.com"}
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\",\"arn\":\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\",\"accountId\":\"123456678\",\"accessKeyId\":\"ASIAUCS54HEKPPHDNOGC\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAUCS54HEKDKHAECU5N\",\"arn\":\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\",\"accountId\":\"123456678\",\"userName\":\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\"},\"webIdFederationData\":{},\"attributes\":{\"creationDate\":\"2023-05-03T08:34:17Z\",\"mfaAuthenticated\":\"false\"}}},\"eventTime\":\"2023-05-03T09:16:01Z\",\"eventSource\":\"sqs.amazonaws.com\",\"eventName\":\"CreateQueue\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"49.207.235.15\",\"userAgent\":\"AWSInternal\",\"requestParameters\":{\"attribute\":{\"Policy\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Id\\\":\\\"__default_policy_ID\\\",\\\"Statement\\\":[{\\\"Sid\\\":\\\"__owner_statement\\\",\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"123456678\\\"},\\\"Action\\\":[\\\"SQS:*\\\"],\\\"Resource\\\":\\\"arn:aws:sqs:us-west-2:123456678:TestPoojaNew\\\"}]}\",\"ReceiveMessageWaitTimeSeconds\":\"0\",\"SqsManagedSseEnabled\":\"true\",\"DelaySeconds\":\"0\",\"KmsMasterKeyId\":\"\",\"RedrivePolicy\":\"\",\"MessageRetentionPeriod\":\"345600\",\"MaximumMessageSize\":\"262144\",\"VisibilityTimeout\":\"30\",\"RedriveAllowPolicy\":\"\"},\"tags\":{\"test\":\"true\"}},\"responseElements\":{\"queueUrl\":\"https://sqs.us-west-2.amazonaws.com/123456678/TestPoojaNew\"},\"requestID\":\"7c41e87a-a828-5717-8eb2-b4b680b92479\",\"eventID\":\"85297ed4-f144-4afb-84ce-63e9e58556b4\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456678\",\"eventCategory\":\"Management\",\"sessionCredentialFromConsole\":\"true\"}",
-		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:sqs::123456678:TestPoojaNew"},
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:sqs::123456678:TestPoojaNew"},
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -700,10 +699,10 @@ func TestParseCloudtrailLogsS3ForARN(t *testing.T) {
 
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.amazonaws.com"}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"cloudtrail.amazonaws.com\"},\"eventTime\":\"2023-03-03T07:30:04Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"GetBucketAcl\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"cloudtrail.amazonaws.com\",\"userAgent\":\"cloudtrail.amazonaws.com\",\"requestParameters\":{\"Host\":\"aws-cloudtrail-logs-700010466334-8d075b05.s3.us-east-1.amazonaws.com\",\"acl\":\"\"},\"responseElements\":null,\"additionalEventData\":{\"SignatureVersion\":\"SigV4\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"bytesTransferredIn\":0,\"AuthenticationMethod\":\"AuthHeader\",\"x-amz-id-2\":\"La8vQCxEf9pcqy/H8Y7Rs7aULfw0Qkc0EI+uKOFTyuMu8of/2a/yvPO6hKck3V5YaGneBCVwzkw=\",\"bytesTransferredOut\":568},\"requestID\":\"TAQNDGTZC32834P4\",\"eventID\":\"2514d9c5-5365-4b24-ac86-241dea825ad6\",\"readOnly\":true,\"resources\":[{\"accountId\":\"700010466334\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"700010466334\",\"sharedEventID\":\"59523b9c-953d-4110-b4d5-b8209621af88\",\"eventCategory\":\"Management\"}",
-		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05"},
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05"},
 		Metadata:   metadataMap,
 	}
 
@@ -719,10 +718,10 @@ func TestCloudWatchEventsS3(t *testing.T) {
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.amazonaws.com"}
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"additionalEventData\":{\"AuthenticationMethod\":\"AuthHeader\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"SignatureVersion\":\"SigV4\",\"bytesTransferredIn\":0,\"bytesTransferredOut\":0,\"x-amz-id-2\":\"UJNZntIyly1aAdiFVSPCwh14QRbyGaVQsbTjtgaNHRYgy0gl4p8c2Uu8Iu498icXe/3JHf9VFHo=\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"b9d131b3-70c7-4f74-a203-bddda20b7469\",\"eventName\":\"HeadBucket\",\"eventSource\":\"s3.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:54Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":true,\"recipientAccountId\":\"280443500820\",\"requestID\":\"J9ZE535Z4A4RVWZF\",\"requestParameters\":{\"Host\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"bucketName\":\"sagemaker-studio-280443500820-6jk579yrjdw\"},\"resources\":[{\"ARNPrefix\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw/\",\"type\":\"AWS::S3::Object\"},{\"ARN\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw\",\"accountId\":\"1234567\",\"type\":\"AWS::S3::Bucket\"}],\"responseElements\":null,\"sourceIPAddress\":\"10.54.148.148\",\"tlsDetails\":{\"cipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"clientProvidedHostHeader\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"tlsVersion\":\"TLSv1.2\"},\"userAgent\":\"[aws-sdk-java/1.12.498Linux/5.10.178-162.673.amzn2.x86_64OpenJDK_64-Bit_Server_VM/17.0.7+7-LTSjava/17.0.7vendor/Amazon.com_Inc.cfg/retry-mode/legacy]\",\"userIdentity\":{\"accessKeyId\":\"ASIAUCS54HEKCWHITL6Z\",\"accountId\":\"1234567\",\"arn\":\"arn:aws:sts::280443500820:assumed-role/aws-test-pooja-role/LMAssumeRoleSession\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ:LMAssumeRoleSession\",\"sessionContext\":{\"attributes\":{\"creationDate\":\"2023-07-13T09:06:17Z\",\"mfaAuthenticated\":\"false\"},\"sessionIssuer\":{\"accountId\":\"1234567\",\"arn\":\"arn:aws:iam::280443500820:role/aws-test-pooja-role\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ\",\"type\":\"Role\",\"userName\":\"aws-test-pooja-role\"}},\"type\":\"AssumedRole\"},\"vpcEndpointId\":\"vpce-051f8c152e5ab9b9d\"}",
-		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 54, 0, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw"},
+		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 54, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw"},
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -737,10 +736,10 @@ func TestCloudWatchEventsLambda(t *testing.T) {
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "lambda.amazonaws.com"}
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder:$LATEST\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"e34805e1-c975-40ff-96e9-8fb01c4bd5ec\",\"eventName\":\"Invoke\",\"eventSource\":\"lambda.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:58Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":false,\"recipientAccountId\":\"280443500820\",\"requestID\":\"84fe1797-0fa3-4c28-a84b-318328f0ff1f\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceAccount\":\"280443500820\",\"sourceArn\":\"arn:aws:logs:us-west-2:280443500820:log-group:/aws/events/cloudwatchEventsTest:*\"},\"resources\":[{\"ARN\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\"}],\"responseElements\":null,\"sharedEventID\":\"779c751a-2152-4151-93b9-254d90b5819a\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"userIdentity\":{\"invokedBy\":\"logs.amazonaws.com\",\"type\":\"AWSService\"}}",
-		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 58, 0, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder"},
+		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 58, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder"},
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -763,7 +762,6 @@ func TestCustomMetadataFromJsonEvent(t *testing.T) {
 	jsonKeys := []string{"account", "detail.additionalEventData.AuthenticationMethod", "detail.resources.[0].type"}
 	customMetadataMap := make(map[string]interface{})
 	addCustomMetadataFromRawJson(customMetadataMap, testString, jsonKeys)
-	log.Println(customMetadataMap)
 	assert.Equal(t, customMetadataMap["account"], "280443500820")
 	assert.Equal(t, customMetadataMap["detail.additionalEventData.AuthenticationMethod"], "AuthHeader")
 	assert.Equal(t, customMetadataMap["detail.resources.[0].type"], "AWS::S3::Object")
@@ -797,10 +795,10 @@ func TestCloudWatchEventsS3Else(t *testing.T) {
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.s3"}
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"ObjectCreated\",\"source\":\"aws.s3\",\"account\":\"123456789012\",\"time\":\"2021-11-12T00:00:00Z\",\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"example-bucket\"},\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\",\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"00617F08299329D189\"},\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\",\"reason\":\"PutObject\"}}",
-		Timestamp:  time.Date(2021, time.November, 12, 0, 0, 0, 0, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::example-bucket"},
+		Timestamp:  time.Date(2021, time.November, 12, 0, 0, 0, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::example-bucket"},
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -808,7 +806,7 @@ func TestCloudWatchEventsS3Else(t *testing.T) {
 
 func TestCloudWatchEventsEC2Else(t *testing.T) {
 	t.Setenv("LM_TENANT_IDENTIFIER", "123456")
-	t.Setenv("LM_COMPANY_NAME", "test")
+	t.Setenv("LM_ACCOUNT", "test")
 	ExtractEnvironmentVariables()
 	var s = "{\"account\":\"280443500820\",\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"},\"detail-type\":\"EC2InstanceState-changeNotification\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"source\":\"aws.ec2\",\"time\":\"2023-09-04T10:45:46Z\",\"version\":\"0\"}"
 	var data events.CloudWatchEvent
@@ -818,10 +816,10 @@ func TestCloudWatchEventsEC2Else(t *testing.T) {
 	}
 	logs := parseCloudWatchEvents(data)
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.ec2", "_lm.tenantId": "123456"}
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"version\":\"0\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"detail-type\":\"EC2InstanceState-changeNotification\",\"source\":\"aws.ec2\",\"account\":\"280443500820\",\"time\":\"2023-09-04T10:45:46Z\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"}}",
-		Timestamp:  time.Date(2023, time.September, 4, 10, 45, 46, 0, time.Local),
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac"},
+		Timestamp:  time.Date(2023, time.September, 4, 10, 45, 46, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac"},
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])

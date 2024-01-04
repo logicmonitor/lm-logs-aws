@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -40,6 +41,10 @@ func ExtractEnvironmentVariables() {
 
 		bearerToken = os.Getenv("LOGICMONITOR_BEARER_TOKEN")
 
+	}
+
+	if bearerToken != "" {
+		bearerToken = fmt.Sprintf("Bearer %s", bearerToken)
 	}
 
 	companyName = os.Getenv("LM_ACCOUNT")

@@ -121,12 +121,12 @@ func handler(request interface{}) {
 
 	auth := utils.AuthParams{AccessID: accessID,
 		AccessKey:            accessKey,
-		BearerToken:          bearerToken,
-		CollectorCredentials: ""}
+		BearerToken:          bearerToken}
 
 	options := []logs.Option{
 		logs.WithLogBatchingDisabled(),
 		logs.WithAuthentication(auth),
+		logs.WithUserAgent("lm-logs-aws"),
 	}
 
 	lmLog, err := logs.NewLMLogIngest(context.Background(), options...)
@@ -135,6 +135,7 @@ func handler(request interface{}) {
 		return
 	}
 	SendLogs(log, lmLog)
+
 }
 
 func main() {

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -11,35 +13,27 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
+	"github.com/logicmonitor/lm-data-sdk-go/api/logs"
+	"github.com/logicmonitor/lm-data-sdk-go/model"
+	"github.com/logicmonitor/lm-data-sdk-go/utils"
 )
 
-var awsRegion, scrubRegex, logSource, versionID, useSecretManager, accessID, accessKey, bearerToken, companyName string
+var awsRegion, scrubRegex, useSecretManager, accessID, accessKey, bearerToken, companyName string
+
 var debug bool
 var sessionNew *session.Session
 var s3Manager *s3.S3
 
-func getCompany() string {
-	if companyName != "" {
-		return companyName
-	}
-
-	return ""
-}
-
-func SendLogs(logs []ingest.Log) {
-
-	if len(logs) == 0 {
+func SendLogs(logInput []model.LogInput, lmLog *logs.LMLogIngest) {
+	if len(logInput) == 0 {
 		return
 	}
 
-	lmIngest, err := ingest.NewLogIngester(getCompany(), accessID, accessKey, bearerToken, logSource, versionID)
+	ingestResponse, err := lmLog.SendLogs(context.Background(), logInput)
 	if err != nil {
-		log.Fatalf("Error while setting up LM Log Ingestion client. Error : %s", err)
+		fmt.Println("Error in sending log to LM : ", err)
 	}
 
-	// Send logs to Logic Monitor
-	ingestResponse, err := lmIngest.SendLogs(logs)
 	handleFatalError("Request failed", err)
 
 	if debug || !ingestResponse.Success {
@@ -49,13 +43,13 @@ func SendLogs(logs []ingest.Log) {
 	}
 }
 
-func ScrubLogsWithRegex(lmBatch []ingest.Log) {
+func ScrubLogsWithRegex(lmBatch []model.LogInput) {
 	if scrubRegex != "" {
 		reg := regexp.MustCompile(scrubRegex)
 		for _, event := range lmBatch {
-			log.Print(event.Message)
-			event.Message = reg.ReplaceAllString(event.Message, "")
-			log.Print(event.Message)
+			log.Printf("%s", fmt.Sprintf("%s", event.Message))
+			event.Message = reg.ReplaceAllString(fmt.Sprintf("%s", event.Message), "")
+			log.Printf("%s", fmt.Sprintf("%s", event.Message))
 		}
 	}
 }
@@ -86,8 +80,8 @@ func ParseEventType(requests interface{}) string {
 	return ""
 }
 
-func ExtractLogs(data interface{}) []ingest.Log {
-	logs := []ingest.Log{}
+func ExtractLogs(data interface{}) []model.LogInput {
+	logs := []model.LogInput{}
 	var err error
 	source := ParseEventType(data)
 
@@ -122,9 +116,26 @@ func handler(request interface{}) {
 	ExtractEnvironmentVariables()
 	sessionNew = session.Must(session.NewSession())
 	s3Manager = s3.New(sessionNew)
-	logs := ExtractLogs(request)
-	ScrubLogsWithRegex(logs)
-	SendLogs(logs)
+	log := ExtractLogs(request)
+	ScrubLogsWithRegex(log)
+
+	auth := utils.AuthParams{AccessID: accessID,
+		AccessKey:            accessKey,
+		BearerToken:          bearerToken}
+
+	options := []logs.Option{
+		logs.WithLogBatchingDisabled(),
+		logs.WithAuthentication(auth),
+		logs.WithUserAgent("lm-logs-aws"),
+	}
+
+	lmLog, err := logs.NewLMLogIngest(context.Background(), options...)
+	if err != nil {
+		fmt.Println("Error in initilaizing log ingest ", err)
+		return
+	}
+	SendLogs(log, lmLog)
+
 }
 
 func main() {

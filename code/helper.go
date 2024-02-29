@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -24,25 +25,29 @@ func ExtractEnvironmentVariables() {
 		if debug {
 			log.Println("Using Secrets Manager to store LM credentials")
 		}
-		accessKey = getSecretValue(os.Getenv("LM_ACCESS_KEY"))
+		accessKey = getSecretValue(os.Getenv("LOGICMONITOR_ACCESS_KEY"))
 
-		accessID = getSecretValue(os.Getenv("LM_ACCESS_ID"))
+		accessID = getSecretValue(os.Getenv("LOGICMONITOR_ACCESS_ID"))
 
-		bearerToken = getSecretValue((os.Getenv("LM_BEARER_TOKEN")))
+		bearerToken = getSecretValue((os.Getenv("LOGICMONITOR_BEARER_TOKEN")))
 
 	} else {
 		if debug {
 			log.Println("Using Environmental Variables to store LM credentials")
 		}
-		accessKey = os.Getenv("LM_ACCESS_KEY")
+		accessKey = os.Getenv("LOGICMONITOR_ACCESS_KEY")
 
-		accessID = os.Getenv("LM_ACCESS_ID")
+		accessID = os.Getenv("LOGICMONITOR_ACCESS_ID")
 
-		bearerToken = os.Getenv("LM_BEARER_TOKEN")
+		bearerToken = os.Getenv("LOGICMONITOR_BEARER_TOKEN")
 
 	}
 
-	companyName = os.Getenv("LM_COMPANY_NAME")
+	if bearerToken != "" {
+		bearerToken = fmt.Sprintf("Bearer %s", bearerToken)
+	}
+
+	companyName = os.Getenv("LM_ACCOUNT")
 	defaultMetadata := os.Getenv("METADATA")
 
 	metadataArray = strings.Split(defaultMetadata, ",")
@@ -52,10 +57,6 @@ func ExtractEnvironmentVariables() {
 	}
 
 	scrubRegex = os.Getenv("LM_SCRUB_REGEX")
-
-	logSource = "lm-logs-aws"
-
-	versionID = "1.3.0"
 
 	defaultJsonMetadataKeyString := os.Getenv("JSON_METADATA_KEYS")
 	defaultJsonMetadataKeysRaw := strings.Split(defaultJsonMetadataKeyString, ",")

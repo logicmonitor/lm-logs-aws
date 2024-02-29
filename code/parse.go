@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
+	"github.com/logicmonitor/lm-data-sdk-go/model"
 	jsonq "github.com/thedevsaddam/gojsonq/v2"
 )
 
@@ -22,8 +22,8 @@ var metadataArray []string
 var lmTenantID string
 var goJsonQ = jsonq.New()
 
-func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
-	lmBatch := make([]ingest.Log, 0)
+func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]model.LogInput, error) {
+	lmBatch := make([]model.LogInput, 0)
 
 	bucketName := request.Records[0].S3.Bucket.Name
 	key := request.Records[0].S3.Object.Key
@@ -57,10 +57,10 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 	metadataMap := extractMetadata(region, arn, "elb.amazonaws.com")
 	for _, message := range allMessages {
 
-		log := ingest.Log{
+		log := model.LogInput{
 			Message:    message,
-			ResourceID: map[string]string{"system.aws.arn": arn},
-			Timestamp:  request.Records[0].EventTime,
+			ResourceID: map[string]interface{}{"system.aws.arn": arn},
+			Timestamp:  request.Records[0].EventTime.String(),
 			Metadata:   metadataMap,
 		}
 
@@ -69,11 +69,11 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 	return lmBatch, nil
 }
 
-func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []ingest.Log {
+func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []model.LogInput {
 	var arn string
 	bucketName := request.Records[0].S3.Bucket.Name
 	fileName := request.Records[0].S3.Object.Key
-	lmBatch := make([]ingest.Log, 0)
+	lmBatch := make([]model.LogInput, 0)
 
 	content := getContentsFromS3Bucket(bucketName, fileName)
 
@@ -88,10 +88,10 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 	}
 
 	metadataMap := extractMetadata(request.Records[0].AWSRegion, arn, request.Records[0].EventSource)
-	lmEv := ingest.Log{
+	lmEv := model.LogInput{
 		Message:    content,
-		ResourceID: map[string]string{"system.aws.arn": arn},
-		Timestamp:  request.Records[0].EventTime,
+		ResourceID: map[string]interface{}{"system.aws.arn": arn},
+		Timestamp:  request.Records[0].EventTime.String(),
 		Metadata:   metadataMap,
 	}
 
@@ -100,15 +100,15 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 	return lmBatch
 }
 
-func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
-	var metadataMap = map[string]interface{}{}
-	lmBatch := make([]ingest.Log, 0)
+func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
+
+	var metadataMap = make(map[string]interface{})
+	lmBatch := make([]model.LogInput, 0)
 	d, err := request.AWSLogs.Parse()
 	var resourceValue string
-	var resoureProp = make(map[string]string)
+	var resoureProp = make(map[string]interface{})
 	var isEC2NetworkInterface bool = false
 	var resourceProperty string = "system.aws.arn"
-
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
 		err := json.Unmarshal([]byte(d.LogEvents[0].Message), &rdsEnhancedEvent)
@@ -193,10 +193,10 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 			addCustomMetadataFromRawJson(metadataMap, event.Message, defaultJsonMetadataKeys)
 			mergeMaps(metadataMap, cloudWatchEventMetadata)
 
-			lmEv := ingest.Log{
+			lmEv := model.LogInput{
 				Message:    event.Message,
 				ResourceID: resoureProp,
-				Timestamp:  time.Unix(0, event.Timestamp*1000000),
+				Timestamp:  time.Unix(0, event.Timestamp*1000000).String(),
 				Metadata:   metadataMap,
 			}
 			lmBatch = append(lmBatch, lmEv)
@@ -220,8 +220,8 @@ func decompressGzip(content string) string {
 	return string(strContent)
 }
 
-func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
-	lmBatch := make([]ingest.Log, 0)
+func parseCloudTrailLogs(data events.CloudwatchLogsData) []model.LogInput {
+	lmBatch := make([]model.LogInput, 0)
 
 	cloudWatchMetadata := make(map[string]interface{})
 	addCloudWatchEventMetadata(cloudWatchMetadata, &data)
@@ -230,10 +230,10 @@ func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
 		mergeMaps(metadataMap, cloudWatchMetadata)
 		resoureIDMap := processResourceMapping(event.Message, data.Owner)
 
-		lmEv := ingest.Log{
+		lmEv := model.LogInput{
 			Message:    event.Message,
 			ResourceID: resoureIDMap,
-			Timestamp:  time.Unix(0, event.Timestamp*1000000),
+			Timestamp:  time.Unix(0, event.Timestamp*1000000).String(),
 			Metadata:   metadataMap,
 		}
 
@@ -326,12 +326,12 @@ func addCloudWatchEventMetadata(initialMap map[string]interface{}, logData *even
 	}
 }
 
-func processResourceMapping(message string, accountId string) map[string]string {
+func processResourceMapping(message string, accountId string) map[string]interface{} {
 	eventSourceArray := regexCompile(eventSourceRegex).FindStringSubmatch(message)
 	eventSource := eventSourceArray[2]
 	var lambdaMapping string
 	accountLevelLog := true
-	var resoureIDMap = make(map[string]string)
+	var resoureIDMap = make(map[string]interface{})
 	var resourceProperty string = "system.aws.arn"
 
 	if strings.Contains(eventSource, "firehose") {
@@ -436,9 +436,9 @@ func processResourceMapping(message string, accountId string) map[string]string 
 	return resoureIDMap
 }
 
-func parseCloudWatchEvents(request events.CloudWatchEvent) []ingest.Log {
-	lmBatch := make([]ingest.Log, 0)
-	var resoureIDMap = make(map[string]string)
+func parseCloudWatchEvents(request events.CloudWatchEvent) []model.LogInput {
+	lmBatch := make([]model.LogInput, 0)
+	var resoureIDMap = make(map[string]interface{})
 	var metadataMap map[string]interface{}
 	var event string
 	if strings.EqualFold(request.DetailType, "AWS API Call via CloudTrail") {
@@ -468,10 +468,10 @@ func parseCloudWatchEvents(request events.CloudWatchEvent) []ingest.Log {
 
 	}
 
-	lmEv := ingest.Log{
+	lmEv := model.LogInput{
 		Message:    event,
 		ResourceID: resoureIDMap,
-		Timestamp:  request.Time.Local(),
+		Timestamp:  request.Time.String(),
 		Metadata:   metadataMap,
 	}
 	lmBatch = append(lmBatch, lmEv)

@@ -128,6 +128,15 @@ Parameters:
     Type: String
     Default: ""
     Description: ARN for the Permissions Boundary Policy
+  AccountLevelSubscription:
+    Type: String
+    AllowedValues: [true, false]
+    Default: "false"
+    Description: If true it will enable account level subscription to forward logs to the LMLogsForwarder lambda.
+  FilterPattern:
+    Type: String
+    Description: Specify the log event structure and any filter conditions to apply on your log data as it gets streamed to LMLogsForwarder lambda. Only applicable if AccountLevelSubscription is true.
+    Default: ""
 
 Rules:
   NoAccessIdKeyProvided:
@@ -342,6 +351,15 @@ Resources:
       Description: LogicMonitor Bearer Token
       SecretString:
         Ref: LMBearerToken
+  AccountPolicy:
+    Condition: IsAccountLevel
+    Type: AWS::Logs::AccountPolicy
+    DependsOn: Forwarder
+    Properties:
+      PolicyName: test-subscriptionfilter-policy
+      PolicyDocument: !Sub "{\"DestinationArn\":\"arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${FunctionName}\", \"FilterPattern\": \"${FilterPattern}\"}"
+      PolicyType: "SUBSCRIPTION_FILTER_POLICY"
+      Scope: "ALL"
 Conditions:
   SetPermissionsBoundary:
     Fn::Not:
@@ -361,6 +379,7 @@ Conditions:
   CreateSecretBearerToken: !And
     - !Condition MustUseBearerTokenForAuth
     - !Condition CreateSecretManager
+  IsAccountLevel: !Equals [!Ref AccountLevelSubscription, 'true']
 Outputs:
   LMForwarderArn:
     Description: LogicMonitor Forwarder Lambda Function ARN
@@ -392,4 +411,6 @@ Metadata:
           - LMTenantIdentifier
           - FunctionMemorySize
           - FunctionTimeoutInSeconds
+          - AccountLevelSubscription
+          - FilterPattern
           

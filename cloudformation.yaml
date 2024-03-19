@@ -139,8 +139,8 @@ Parameters:
     Default: ""
   SelectionCriteria:
     Type: String
-    Description: Use this parameter to apply a subscription filter policy to a subset of log groups in the account. The string can be up to 25KB in length 
-    Default: "LogGroupName NOT IN [\"MyLogGroup\", \"MyAnotherLogGroup\"]"
+    Description: Use this parameter to apply a subscription filter policy to a subset of log groups in the account. The string can be up to 25KB in length. Example LogGroupName NOT IN ["MyLogGroup", "MyAnotherLogGroup"]
+    Default: ""
 
 Rules:
   NoAccessIdKeyProvided:
@@ -423,5 +423,5 @@ Metadata:
           - FunctionTimeoutInSeconds
           - AccountLevelSubscription
           - FilterPattern
-          - HasSelectionCriteria
+          - SelectionCriteria
           

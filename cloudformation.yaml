@@ -137,6 +137,10 @@ Parameters:
     Type: String
     Description: Specify the log event structure and any filter conditions to apply on your log data as it gets streamed to LMLogsForwarder lambda. Only applicable if AccountLevelSubscription is true.
     Default: ""
+  SelectionCriteria:
+    Type: String
+    Description: Use this parameter to apply a subscription filter policy to a subset of log groups in the account. The string can be up to 25KB in length. Example LogGroupName NOT IN ["MyLogGroup", "MyAnotherLogGroup"]
+    Default: ""
 
 Rules:
   NoAccessIdKeyProvided:
@@ -356,10 +360,15 @@ Resources:
     Type: AWS::Logs::AccountPolicy
     DependsOn: Forwarder
     Properties:
-      PolicyName: test-subscriptionfilter-policy
+      PolicyName: account-subscriptionfilter-policy
       PolicyDocument: !Sub "{\"DestinationArn\":\"arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${FunctionName}\", \"FilterPattern\": \"${FilterPattern}\"}"
       PolicyType: "SUBSCRIPTION_FILTER_POLICY"
       Scope: "ALL"
+      SelectionCriteria:
+        Fn::If:
+          - HasSelectionCriteria
+          - Ref: SelectionCriteria
+          - Ref: AWS::NoValue
 Conditions:
   SetPermissionsBoundary:
     Fn::Not:
@@ -380,6 +389,7 @@ Conditions:
     - !Condition MustUseBearerTokenForAuth
     - !Condition CreateSecretManager
   IsAccountLevel: !Equals [!Ref AccountLevelSubscription, 'true']
+  HasSelectionCriteria:  !Not [!Equals [!Ref SelectionCriteria, ""]]
 Outputs:
   LMForwarderArn:
     Description: LogicMonitor Forwarder Lambda Function ARN
@@ -413,4 +423,5 @@ Metadata:
           - FunctionTimeoutInSeconds
           - AccountLevelSubscription
           - FilterPattern
+          - SelectionCriteria
           

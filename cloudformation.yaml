@@ -358,7 +358,7 @@ Resources:
   AccountPolicy:
     Condition: IsAccountLevel
     Type: AWS::Logs::AccountPolicy
-    DependsOn: Forwarder
+    DependsOn: [Forwarder, CloudWatchLogsPermission, S3Permission]
     Properties:
       PolicyName: account-subscriptionfilter-policy
       PolicyDocument: !Sub "{\"DestinationArn\":\"arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${FunctionName}\", \"FilterPattern\": \"${FilterPattern}\"}"

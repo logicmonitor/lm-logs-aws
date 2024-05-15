@@ -141,6 +141,10 @@ Parameters:
     Type: String
     Description: Use this parameter to apply a subscription filter policy to a subset of log groups in the account. The string can be up to 25KB in length. Example LogGroupName NOT IN ["MyLogGroup", "MyAnotherLogGroup"]
     Default: ""
+  ResourceType:
+    Type: String
+    Description: Type of platform in which services are deployed.
+    Default: "AWS"
 
 Rules:
   NoAccessIdKeyProvided:
@@ -190,6 +194,8 @@ Resources:
           ADD_CLOUDWATCH_METADATA: "true"
           LM_TENANT_IDENTIFIER:
             Ref: LMTenantIdentifier
+          RESOURCE_TYPE:
+            Ref: ResourceType
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -424,4 +430,5 @@ Metadata:
           - AccountLevelSubscription
           - FilterPattern
           - SelectionCriteria
+          - ResourceType
           

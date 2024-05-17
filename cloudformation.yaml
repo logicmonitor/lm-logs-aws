@@ -143,7 +143,7 @@ Parameters:
     Default: ""
   ResourceType:
     Type: String
-    Description: Type of platform in which services are deployed.
+    Description: Type of platform from where logs are coming.
     Default: "AWS"
 
 Rules:

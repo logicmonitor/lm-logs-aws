@@ -276,7 +276,7 @@ func extractMetadataForCloudTrail(message string) map[string]interface{} {
 		metadataMap["_lm.tenantId"] = lmTenantID
 	}
 	if strings.TrimSpace(resourceType) != "" {
-		metadataMap["_lm.resourceType"] = resourceType
+		metadataMap["resourceType"] = resourceType
 	}
 	return metadataMap
 }
@@ -297,7 +297,7 @@ func extractMetadata(region string, arn string, eventsource string) map[string]i
 		metadataMap["_lm.tenantId"] = lmTenantID
 	}
 	if strings.TrimSpace(resourceType) != "" {
-		metadataMap["_lm.resourceType"] = resourceType
+		metadataMap["_resourceType"] = resourceType
 	}
 
 	return metadataMap

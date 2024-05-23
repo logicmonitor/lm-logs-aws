@@ -20,6 +20,7 @@ var defaultJsonMetadataKeys []string
 var addCloudWatchMetadata = false
 var metadataArray []string
 var lmTenantID string
+var resourceType string
 var goJsonQ = jsonq.New()
 
 func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]model.LogInput, error) {
@@ -274,6 +275,9 @@ func extractMetadataForCloudTrail(message string) map[string]interface{} {
 	if strings.TrimSpace(lmTenantID) != "" {
 		metadataMap["_lm.tenantId"] = lmTenantID
 	}
+	if strings.TrimSpace(resourceType) != "" {
+		metadataMap["resourceType"] = resourceType
+	}
 	return metadataMap
 }
 
@@ -291,6 +295,9 @@ func extractMetadata(region string, arn string, eventsource string) map[string]i
 	metadataMap["_type"] = eventsource
 	if strings.TrimSpace(lmTenantID) != "" {
 		metadataMap["_lm.tenantId"] = lmTenantID
+	}
+	if strings.TrimSpace(resourceType) != "" {
+		metadataMap["_resourceType"] = resourceType
 	}
 
 	return metadataMap

@@ -69,6 +69,7 @@ func ExtractEnvironmentVariables() {
 	}
 
 	lmTenantID = os.Getenv("LM_TENANT_IDENTIFIER")
+	resourceType = os.Getenv("RESOURCE_TYPE")
 }
 
 func readCloserToString(body io.ReadCloser) string {

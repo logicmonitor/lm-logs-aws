@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -19,7 +20,7 @@ import (
 )
 
 var awsRegion, scrubRegex, useSecretManager, accessID, accessKey, bearerToken, companyName string
-
+var ingestTimeout int
 var debug bool
 var sessionNew *session.Session
 var s3Manager *s3.S3
@@ -119,6 +120,7 @@ func handler(request interface{}) {
 	log := ExtractLogs(request)
 	ScrubLogsWithRegex(log)
 
+	client := Client()
 	auth := utils.AuthParams{AccessID: accessID,
 		AccessKey:            accessKey,
 		BearerToken:          bearerToken}
@@ -127,6 +129,7 @@ func handler(request interface{}) {
 		logs.WithLogBatchingDisabled(),
 		logs.WithAuthentication(auth),
 		logs.WithUserAgent("lm-logs-aws"),
+		logs.WithHTTPClient(client),
 	}
 
 	lmLog, err := logs.NewLMLogIngest(context.Background(), options...)
@@ -136,6 +139,13 @@ func handler(request interface{}) {
 	}
 	SendLogs(log, lmLog)
 
+}
+
+func Client() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false, MinVersion: tls.VersionTLS12}
+	clientTransport := (http.RoundTripper)(transport)
+	return &http.Client{Transport: clientTransport, Timeout: time.Duration(ingestTimeout) * time.Second}
 }
 
 func main() {

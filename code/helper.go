@@ -77,7 +77,7 @@ func ExtractEnvironmentVariables() {
 		ingestTimeout, err = strconv.Atoi(ingestTimeoutStr)
 		if err != nil {
 			if debug{
-				log.Println("Error converting %s to integer: %v\n", ingestTimeout, err)
+				log.Printf("Error converting LOG_INGEST_TIMEOUT value %s to integer: %v\n", strconv.Itoa(ingestTimeout), err)
 			}
 			ingestTimeout = 0
 		}

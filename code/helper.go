@@ -70,6 +70,25 @@ func ExtractEnvironmentVariables() {
 
 	lmTenantID = os.Getenv("LM_TENANT_IDENTIFIER")
 	resourceType = os.Getenv("RESOURCE_TYPE")
+
+	ingestTimeoutStr, exists := os.LookupEnv("LOG_INGEST_TIMEOUT")
+
+	if exists {
+		ingestTimeout, err = strconv.Atoi(ingestTimeoutStr)
+		if err != nil {
+			if debug{
+				log.Printf("Error converting LOG_INGEST_TIMEOUT value %s to integer: %v\n", strconv.Itoa(ingestTimeout), err)
+			}
+			ingestTimeout = 0
+		}
+	}
+
+	if ingestTimeout == 0 {
+		if debug {	
+			log.Println("Environmental variable LOG_INGEST_TIMEOUT not set. Using default as 10sec")
+		}
+		ingestTimeout = 10
+	}
 }
 
 func readCloserToString(body io.ReadCloser) string {

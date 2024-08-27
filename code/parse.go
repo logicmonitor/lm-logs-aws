@@ -109,6 +109,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 	var resourceValue string
 	var resoureProp = make(map[string]interface{})
 	var isEC2NetworkInterface bool = false
+	var isBedrockModelLogs bool = false
 	var resourceProperty string = "system.aws.arn"
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
@@ -169,7 +170,17 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		metadataMap = extractMetadata(awsRegion, "", "fargate.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
 		return parseCloudTrailLogs(d)
-	} else {
+	}else if strings.Contains(d.LogGroup, "bedrock"){
+		if (strings.Contains(d.LogStream, "modelinvocations")){
+			fmt.Println("msg from modelincovation")
+			isBedrockModelLogs = true
+		}
+	} else if strings.Contains(d.LogGroup, "knowledge-base") || strings.Contains(d.LogGroup, "vendedlogs"){
+			fmt.Println("event from bedrock knowledge base")
+			resoureProp["system.aws.accountid"] = d.Owner
+			resoureProp["system.cloud.category"] = "AWS/LMAccount"
+			metadataMap = extractMetadata(awsRegion, "", "bedrock.amazonaws.com")
+	}else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
 		metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
@@ -189,6 +200,15 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 				resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID)
 				resoureProp[resourceProperty] = resourceValue
 				metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
+
+			}
+			if isBedrockModelLogs  && resourceValue == "" {
+				var messageJson map[string]interface{}
+				json.Unmarshal([]byte(event.Message ), &messageJson)
+				fmt.Println("bedrock msg ",messageJson)
+				resourceValue = messageJson["modelId"]
+				resoureProp[resourceProperty] = resourceValue
+				metadataMap = extractMetadata(awsRegion, resourceValue, "bedrock.amazonaws.com")
 
 			}
 			addCustomMetadataFromRawJson(metadataMap, event.Message, defaultJsonMetadataKeys)

@@ -169,7 +169,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		metadataMap = extractMetadata(awsRegion, "", "fargate.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
 		return parseCloudTrailLogs(d)
-	} else if strings.Contains(d.LogGroup, "eks") || strings.Contains(d.LogGroup, "containerInsights") {
+	} else if strings.Contains(d.LogGroup, "/aws/eks") || strings.Contains(d.LogGroup, "/aws/containerInsights") {
 		resoureProp["system.aws.accountid"] = d.Owner
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
 		metadataMap = extractMetadata(awsRegion, "", "eks.amazonaws.com")

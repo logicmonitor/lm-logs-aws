@@ -109,6 +109,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 	var resourceValue string
 	var resoureProp = make(map[string]interface{})
 	var isEC2NetworkInterface bool = false
+	var isBedrockModelLogs bool = false
 	var resourceProperty string = "system.aws.arn"
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
@@ -173,11 +174,18 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		resoureProp["system.aws.accountid"] = d.Owner
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
 		metadataMap = extractMetadata(awsRegion, "", "eks.amazonaws.com")
+	} else if strings.Contains(d.LogGroup, "bedrock"){
+		if strings.Contains(d.LogGroup, "knowledge-base") || strings.Contains(d.LogGroup, "vendedlogs"){
+			resoureProp["system.aws.accountid"] = d.Owner
+			resoureProp["system.cloud.category"] = "AWS/LMAccount"
+			metadataMap = extractMetadata(awsRegion, "", "bedrock.amazonaws.com")
+		} else if (strings.Contains(d.LogStream, "modelinvocations")){
+			isBedrockModelLogs = true
+		}
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
 		metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
-
 	}
 
 	handleFatalError("failed to parse cloudwatch event", err)
@@ -193,6 +201,20 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 				resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID)
 				resoureProp[resourceProperty] = resourceValue
 				metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
+
+			}
+			if isBedrockModelLogs  && resourceValue == "" {
+				var messageJson map[string]interface{}
+				if err :=json.Unmarshal([]byte(event.Message ), &messageJson); err != nil {
+					fmt.Println("err while unmarshalling event message ",err)
+				}
+				if(strings.Contains(messageJson["modelId"].(string), "arn:aws:bedrock")){
+					resourceValue = messageJson["modelId"].(string)
+				}else{
+					resourceValue =fmt.Sprintf("arn:aws:bedrock:%s::foundation-model/%s", awsRegion, messageJson["modelId"].(string))
+				}
+				resoureProp[resourceProperty] = resourceValue
+				metadataMap = extractMetadata(awsRegion, resourceValue, "bedrock.amazonaws.com")
 
 			}
 			addCustomMetadataFromRawJson(metadataMap, event.Message, defaultJsonMetadataKeys)

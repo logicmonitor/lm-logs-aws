@@ -613,6 +613,28 @@ func TestFargateLog(t *testing.T) {
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
+func TestEKSLog(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "eks.amazonaws.com"}
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/+3YW2/bNhQA4L8i8CUvlszDOwUUWIAlxYBtKJY8LQ4CSqRsIrIoiFTcLsh/L6w0bZA1D0m9tQX0SPqQPIfip4tv0dbFaNbu/EPvUIl+PT4/vvrj5Ozs+O0JWqCw69yASkQUZoxyjBXBaIHasH47hLFHJVqaXVzWoUvGd27wXfTrTYrLGx83ps3bsM7ddVyavm99bZIP3f3wszQ4s0Ul8n0OkuQUcopzILgYY75zMeWkqMO2H5MrfJfc0Jk2fzRLcWOGog3r4vPSsWja0XUpr3zKN93OVldma/4JXV63YbQ7k+rN1aMQJRtJOTBpq0YoapjjRgopdKWtttbWVivXSCMMmEqBrmqjK2pYY62usGP71dECxbGK9eD7fVKnvk1uiKi8QMnFlFJCl1O1JzeuS/v+W+QtKhFVTEimBdFMcaVAMKw05lgzSinDQDgRknGmsVKSS0JAcqIoQQuU/NbFZLY9KkESphkBDRzD4uFCohLdrqawFSpXiGDCcqxyos+BlVSUFAqOQQutpP57hRYrFKdrMUXHZN0wTL1X/dRzOjXasJ5aF/vpllgtic4eprvMLtwwhOEyuwhj6sdUPtrwNqzj03aBL7N3Y/r9YV+y43e/ZYOLfeiss9nOp002zfjm6C8XwzjU7s+QTsPY2ZP3tZu2+miRfar3zdH5xmWxd7VvvLNZG9bZfUWZDS5mXUiZe+9jKo6mUq7Hyg2dSy6uUHm7Qn2wV535tFtPj9A0Yv9r7E3tvsT962RNgfupvJ0CBDW1aqzORUUgZ9iRXFOpcsJpo3AtAbSdxmxCTNOIF0CYBn4++F/Lfoqwob52w0NG33renyy6MXFzXykmDAMwyjgp7PVQuHp4lPv9Tpld3Fex3N8LQhXdcGMq3/r0YX/7yJsw5F9y/yVuDOGixEZWGhuloRYNa5RTFVQGwGnVEFEBpoJDg1ltDQdHZaWwUgJkxcCQqqmfJOy3Zu3+m4xLUlBSkGKPAwsiV+juDt0tvoJdAYAEzvbJE6a54IxIpagmioCkEkBJIiWlhOnnsZOXYScYA8jvZ/3U+NbZLIUsuu4eqJvgzx5njz+LR44P6ZErzWeQM8gZ5OtBwiFBaqzYDwNyxjhj/N4YKSimpcCCgqZMcs6UoIxoAIYZ5VxQDppTLrDWVGrxDEbCxQs+TUnBBVBNODvI05HMn6Yz9hn7wbHLw2FnDFN+kCfv67DPr8IzyJ8fpDokSI7FDHIGOYP8BpDP/Xn7KpCKYvhhQM4YZ4z/N8bLu488sRq3px4AAA==",
+		},
+	}
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	localTime := time.Local
+	timeValue := time.Date(2024, time.August, 29, 20, 06, 31, 501000000, time.Local)
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
+		timeValue = time.Date(2024, time.August, 29, 14, 36, 31, 501000000, time.Local)
+	}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"time\":\"2024-08-29T14:36:31.501969879Z\",\"stream\":\"stderr\",\"_p\":\"F\",\"log\":\"[2024/08/29 14:36:31] [error] [output:cloudwatch_logs:cloudwatch_logs.0] PutLogEvents API responded with error='ResourceNotFoundException', message='The specified log stream does not exist.'\",\"kubernetes\":{\"pod_name\":\"fluent-bit-hnwdb\",\"namespace_name\":\"amazon-cloudwatch\",\"pod_id\":\"63ac8fd9-6b21-40e2-9378-253f80c7119d\",\"host\":\"ip-172-31-30-120.us-west-2.compute.internal\",\"container_name\":\"fluent-bit\",\"docker_id\":\"87f735147dbf683a4e5a76769b9d9dddcd98ef7a6a1ab819bca9b3a4fdd9b0e4\",\"container_hash\":\"602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/observability/aws-for-fluent-bit@sha256:0a7b90a891c6f4f8e8b1ba11e98f26b103651f04cda51e37b8088617b41a2bfc\",\"container_image\":\"602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/observability/aws-for-fluent-bit:2.32.2.20240627\"}}",
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.accountid": "280443500820", "system.cloud.category": "AWS/LMAccount"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
 func TestParseCloudtrailLogsS3(t *testing.T) {
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{

@@ -85,7 +85,6 @@ func ExtractLogs(data interface{}) []model.LogInput {
 	logs := []model.LogInput{}
 	var err error
 	source := ParseEventType(data)
-
 	if debug {
 		json, _ := json.Marshal(data)
 		log.Printf("Event Recieved: %s\n", string(json))

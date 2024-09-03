@@ -170,23 +170,20 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		metadataMap = extractMetadata(awsRegion, "", "fargate.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
 		return parseCloudTrailLogs(d)
-	}else if strings.Contains(d.LogGroup, "bedrock"){
-		if (strings.Contains(d.LogStream, "modelinvocations")){
-			fmt.Println("msg from modelincovation")
-			isBedrockModelLogs = true
-		}
-	} else if strings.Contains(d.LogGroup, "knowledge-base") || strings.Contains(d.LogGroup, "vendedlogs"){
-			fmt.Println("event from bedrock knowledge base")
+	} else if strings.Contains(d.LogGroup, "bedrock"){
+		if strings.Contains(d.LogGroup, "knowledge-base") || strings.Contains(d.LogGroup, "vendedlogs"){
 			resoureProp["system.aws.accountid"] = d.Owner
 			resoureProp["system.cloud.category"] = "AWS/LMAccount"
 			metadataMap = extractMetadata(awsRegion, "", "bedrock.amazonaws.com")
-	}else {
+		} else if (strings.Contains(d.LogStream, "modelinvocations")){
+			isBedrockModelLogs = true
+		}
+	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
 		metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
-
 	}
-
+		
 	handleFatalError("failed to parse cloudwatch event", err)
 
 	cloudWatchEventMetadata := make(map[string]interface{})
@@ -204,9 +201,14 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 			}
 			if isBedrockModelLogs  && resourceValue == "" {
 				var messageJson map[string]interface{}
-				json.Unmarshal([]byte(event.Message ), &messageJson)
-				fmt.Println("bedrock msg ",messageJson)
-				resourceValue = messageJson["modelId"]
+				if err :=json.Unmarshal([]byte(event.Message ), &messageJson); err != nil {
+					fmt.Println("err while unmarshalling event message ",err)
+				}
+				if(strings.Contains(messageJson["modelId"].(string), "arn:aws:bedrock")){
+					resourceValue = messageJson["modelId"].(string)
+				}else{
+					resourceValue =fmt.Sprintf("arn:aws:bedrock:%s::foundation-model/%s", awsRegion, messageJson["modelId"].(string))
+				}
 				resoureProp[resourceProperty] = resourceValue
 				metadataMap = extractMetadata(awsRegion, resourceValue, "bedrock.amazonaws.com")
 

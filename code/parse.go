@@ -183,7 +183,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		resoureProp[resourceProperty] = resourceValue
 		metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
 	}
-		
+
 	handleFatalError("failed to parse cloudwatch event", err)
 
 	cloudWatchEventMetadata := make(map[string]interface{})

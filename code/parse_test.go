@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/logicmonitor/lm-data-sdk-go/model"
 	"github.com/stretchr/testify/assert"
@@ -160,6 +161,7 @@ func TestParseCloudWatchlogs(t *testing.T) {
 	}
 
 	lmEvents := parseCloudWatchLogs(cloudWatchEvent)
+
 	time := time.Unix(0, 1586351314000*1000000)
 	expectedLMEvent := model.LogInput{
 		Message:    "Apr  8 13:08:34 ip-172-40-0-227 dhclient[2221]: XMT: Solicit on eth0, interval 71330ms.",
@@ -823,7 +825,6 @@ func TestCloudWatchEventsEC2Else(t *testing.T) {
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
-
 func TestCloudWatchEventsBedrockModel(t *testing.T) {
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
@@ -866,7 +867,6 @@ func TestCloudWatchEventsBedrockKB(t *testing.T) {
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
-
 
 func parseTime(epochMillis int64) time.Time{
 	epochSeconds := epochMillis / 1000

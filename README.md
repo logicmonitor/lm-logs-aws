@@ -78,7 +78,9 @@ To send Lambda logs to LogicMonitor, go to cloudwatch and find lambda's log grou
 2. In Create Lambda subscription filter , select "Lambda Function" and choose "LMLogsForwarder" (or, whatever you named the Lambda function during stack creation) and click Start streaming.
 
 ### Forwarding EKS logs
-Foward EKS logs to cloudwatch using [application metrics to cloudwatch] (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-metrics.html) and [application logs to cloudwatch] (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-EKS-logs.html) using [Fluenbit] (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-logs-FluentBit.html)
+Add an "Amazon CloudWatch Observability" plugin to existing or new cluster, OR
+Forward EKS logs to cloudwatch using [application metrics to cloudwatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-metrics.html) and [application logs to cloudwatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-EKS-logs.html) using [Fluenbit](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-logs-FluentBit.html)
+
 These steps create 5 different log groups into cloudwatch as below:
 1. /aws/containerInsights/<cluster-name>/application
 2. /aws/containerInsights/<cluster-name>/host

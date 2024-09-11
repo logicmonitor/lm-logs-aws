@@ -90,18 +90,6 @@ To forward EKS logs to LogicMonitor, follow these steps for the specific log gro
 1. Go to Cloudwatch, select the EKS's log group of which you want to forward logs , under Actions > Create Lambda subscription filter
 2. In Create Lambda subscription filter , select "Lambda Function" and choose "LMLogsForwarder" (or, whatever you named the Lambda function during stack creation) and click Start streaming.
 
-### Send flow logs from EC2
-1. Add below lines in permissions of lambda's role policy:
-  "logs:CreateLogGroup",
-  "logs:CreateLogStream",
-  "logs:PutLogEvents"
-2. Add below line in the Trust Relationship part of the role in the Service tag:
-  "vpc-flow-logs.amazonaws.com"
-3. A Log group in cloud watch should be created with name /aws/ec2/networkInterface
-4. Use the instance id of your EC2 instance to search in Network interfaces page. Select that Network interface row and create a flow log. In create flow log Destination log group should be /aws/ec2/networkInterface and IAM role should be the role created in 1st and 2nd step.
-5. In Log record format, select Custom Format. Log format should have first value as instance-id. Rest of the values can be as per your requirements. For details on different fields please refer to Available fields section on https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html. 
-6. Go to /aws/ec2/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
-
 ### Send flow logs from NAT Gateway
 1. Add below lines in permissions of lambda's role policy:
  "logs:CreateLogGroup",

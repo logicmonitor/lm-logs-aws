@@ -178,8 +178,8 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 6. Logs will start to propagate through lambda to LogIngest.
 
 ### Send Bedrock logs
-1. There are two types of logs supported by AWS Bedrock that can be sent to AWS Cloudwatch. 1. Model invocation logging 2. Knowledge Base Logging
-2. For setting up the Model Invocation Logging follow https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html. For sending logs from the Knowledge base to Cloudwatch follow https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-bases-logging.html
+1. There are two types of logs supported by AWS Bedrock that can be sent to AWS Cloudwatch: Model invocation logging and Knowledge Base Logging
+2. For setting up the Model Invocation Logging follow [model invocation logging] (https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html). For sending logs from the Knowledge base to Cloudwatch follow [Knowledge base logging] (https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-bases-logging.html)
 3. A Log group in cloud watch should be created with name that contains "bedrock" in it.
 4. To differentiate between modelInvocation logs and knowledge-base logs, for knowledge-base logs the Log group name should contain "knowledge-base" or "vendedlogs" (this is by default present so no need to modify it). For modelinvocation logs, the logstreams by default contain string "modelinvocations" in it.
 5. Go to Log Group created by bedrock as above. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.

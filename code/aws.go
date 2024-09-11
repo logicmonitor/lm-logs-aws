@@ -88,7 +88,7 @@ func convertToCloudWatchEvent(m interface{}) events.CloudWatchEvent {
 	var result events.CloudWatchEvent
 	var err = json.Unmarshal(data, &result)
 	handleFatalError("failed to unmarshal cloudWatch event", err)
-
+	
 	return result
 }
 

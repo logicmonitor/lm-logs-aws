@@ -4,7 +4,7 @@ Description: Pushes logs from AWS to LogicMonitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.5.6
+      Version: 1.5.7
   RegionToLayerArnMap:
     us-east-1:
       "LayerArn": "arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
@@ -234,11 +234,6 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
   ForwarderZip:
     Type: Custom::ForwarderZip
     Properties:

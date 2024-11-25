@@ -48,12 +48,17 @@ func ExtractEnvironmentVariables() {
 	}
 
 	companyName = os.Getenv("LM_ACCOUNT")
+	companyDomain = os.Getenv("LM_ACCOUNT_DOMAIN")
 	defaultMetadata := os.Getenv("METADATA")
 
 	metadataArray = strings.Split(defaultMetadata, ",")
 
 	if companyName == "" {
 		log.Fatalf("missing company name")
+	}
+	if companyDomain == "" {
+	  companyDomain = "logicmonitor.com"
+	  log.Println("Company domain is missing, using the default domain as logicmonitor.com")
 	}
 
 	scrubRegex = os.Getenv("LM_SCRUB_REGEX")
@@ -69,14 +74,14 @@ func ExtractEnvironmentVariables() {
 	}
 
 	lmTenantID = os.Getenv("LM_TENANT_IDENTIFIER")
-	resourceType = os.Getenv("RESOURCE_TYPE")
+	resourceType = "AWS"
 
 	ingestTimeoutStr, exists := os.LookupEnv("LOG_INGEST_TIMEOUT")
 
 	if exists {
 		ingestTimeout, err = strconv.Atoi(ingestTimeoutStr)
 		if err != nil {
-			if debug{
+			if debug {
 				log.Printf("Error converting LOG_INGEST_TIMEOUT value %s to integer: %v\n", strconv.Itoa(ingestTimeout), err)
 			}
 			ingestTimeout = 0
@@ -84,7 +89,7 @@ func ExtractEnvironmentVariables() {
 	}
 
 	if ingestTimeout == 0 {
-		if debug {	
+		if debug {
 			log.Println("Environmental variable LOG_INGEST_TIMEOUT not set. Using default as 10sec")
 		}
 		ingestTimeout = 10

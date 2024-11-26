@@ -58,7 +58,9 @@ func ExtractEnvironmentVariables() {
 	}
 	if companyDomain == "" {
 	  companyDomain = "logicmonitor.com"
-	  log.Println("Company domain is missing, using the default domain as logicmonitor.com")
+	  if debug {
+	    log.Println("Company domain is missing, using the default domain as logicmonitor.com")
+	  }
 	}
 
 	scrubRegex = os.Getenv("LM_SCRUB_REGEX")

@@ -880,7 +880,7 @@ func TestCloudWatchEventsBedrockKB(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 	epochMillis := int64(1724850011017)
 	
-	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "bedrock.amazonaws.com", "logGroup": "/aws/vendedlogs/bedrock/knowledge-base/APPLICATION_LOGS/RTWLKRR7XH", "logStream": "bedrock/knowledgebaseslogs", "_lm.tenantId": "123456"}
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_resource.type":"AWS", "_type": "bedrock.amazonaws.com", "logGroup": "/aws/vendedlogs/bedrock/knowledge-base/APPLICATION_LOGS/RTWLKRR7XH", "logStream": "bedrock/knowledgebaseslogs", "_lm.tenantId": "123456"}
 	expectedLMEvent := model.LogInput{
 		Message:    "{\"event_timestamp\":1724850011017,\"event\":{\"ingestion_job_id\":\"GMNMGXKEVG\",\"data_source_id\":\"0N0MGJOTCW\",\"ingestion_job_status\":\"CRAWLING_COMPLETED\",\"knowledge_base_arn\":\"arn:aws:bedrock:us-west-2:280443500820:knowledge-base/RTWLKRR7XH\",\"resource_statistics\":{\"number_of_resources_updated\":0,\"number_of_resources_ingested\":0,\"number_of_resources_scheduled_for_update\":0,\"number_of_resources_scheduled_for_ingestion\":0,\"number_of_resources_scheduled_for_metadata_update\":0,\"number_of_resources_deleted\":0,\"number_of_resources_with_metadata_updated\":0,\"number_of_resources_failed\":0,\"number_of_resources_scheduled_for_deletion\":0}},\"event_version\":\"1.0\",\"event_type\":\"StartIngestionJob.StatusChanged\",\"level\":\"INFO\"}",
 		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),

@@ -73,8 +73,9 @@ Parameters:
     Description: The LogicMonitor acccount name.
   LMCompanyDomain:
     Type: String
-    Default: "logicmonitor.com"
     Description: The LogicMonitor acccount domain.
+    AllowedValues: [ logicmonitor.com, lmgov.us, qa-lmgov.us ]
+    Default: "logicmonitor.com"
   LMAccessId:
     Type: String
     NoEcho: true

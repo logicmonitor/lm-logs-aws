@@ -9,6 +9,7 @@ You will need to supply the following LogicMonitor credentials when configuring 
 * LM Access Key
 * LM Account Name
 * LM Account Domain
+
 **NOTE**: If the LM Account Domain is not specified, it defaults to "logicmonitor.com".
 
 ### Deploying lambda using CloudFormation

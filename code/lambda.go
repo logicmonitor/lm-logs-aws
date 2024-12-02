@@ -19,7 +19,7 @@ import (
 	"github.com/logicmonitor/lm-data-sdk-go/utils"
 )
 
-var awsRegion, scrubRegex, useSecretManager, accessID, accessKey, bearerToken, companyName string
+var awsRegion, scrubRegex, useSecretManager, accessID, accessKey, bearerToken, companyName, companyDomain string
 var ingestTimeout int
 var debug bool
 var sessionNew *session.Session
@@ -85,7 +85,7 @@ func ExtractLogs(data interface{}) []model.LogInput {
 	logs := []model.LogInput{}
 	var err error
 	source := ParseEventType(data)
-	
+
 	if debug {
 		json, _ := json.Marshal(data)
 		log.Printf("Event Recieved: %s\n", string(json))
@@ -125,11 +125,14 @@ func handler(request interface{}) {
 		AccessKey:            accessKey,
 		BearerToken:          bearerToken}
 
+	url := fmt.Sprintf("https://%s.%s/rest", companyName, companyDomain)
+	fmt.Println("ingest URL:", url)
 	options := []logs.Option{
 		logs.WithLogBatchingDisabled(),
 		logs.WithAuthentication(auth),
 		logs.WithUserAgent("lm-logs-aws"),
 		logs.WithHTTPClient(client),
+		logs.WithEndpoint(url),
 	}
 
 	lmLog, err := logs.NewLMLogIngest(context.Background(), options...)

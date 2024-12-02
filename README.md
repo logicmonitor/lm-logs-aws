@@ -8,6 +8,9 @@ You will need to supply the following LogicMonitor credentials when configuring 
 * LM Access ID
 * LM Access Key
 * LM Account Name
+* LM Account Domain
+
+**NOTE**: If the LM Account Domain is not specified, it defaults to "logicmonitor.com".
 
 ### Deploying lambda using CloudFormation
 [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=lm-forwarder&templateURL=https://logicmonitor-logs-forwarder.s3.us-west-1.amazonaws.com/source/latest.yaml)
@@ -27,6 +30,10 @@ variable "lm_company_name" {
   description = "LogicMonitor Account Name"
 }
 
+variable "lm_company_domain" {
+  description = "LogicMonitor Account Domain"
+}
+
 # LogicMonitor Logs forwarder
 resource "aws_cloudformation_stack" "lm_forwarder" {
   name         = "lm-forwarder"
@@ -36,13 +43,14 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
     LMAccessId                = var.lm_access_id
     LMAccessKey               = var.lm_access_key
     LMCompanyName             = var.lm_company_name
+    LMCompanyDomain           = var.lm_company_domain
     LMRegexScrub              = ""
     PermissionsBoundaryArn    = ""
   }
   template_url = "https://logicmonitor-logs-forwarder.s3.us-west-1.amazonaws.com/source/latest.yaml"
 }
 ```
-`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'lm_company_name=<lm_company_name>'`
+`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'lm_company_name=<lm_company_name>' --var 'lm_company_domain=<lm_company_domain>'`
 
 ### Forwarding EC2 Instances logs
 Forward EC2 logs to CloudWatch, using the [CloudWatch Logs Agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html). 

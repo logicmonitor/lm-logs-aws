@@ -4,7 +4,7 @@ Description: Pushes logs from AWS to LogicMonitor logs endpoint.
 Mappings:
   Constants:
     LMForwarder:
-      Version: 1.5.7
+      Version: 1.5.8
   RegionToLayerArnMap:
     us-east-1:
       "LayerArn": "arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
@@ -71,6 +71,11 @@ Parameters:
     Type: String
     Default: ""
     Description: The LogicMonitor acccount name.
+  LMCompanyDomain:
+    Type: String
+    Description: The LogicMonitor acccount domain.
+    AllowedValues: [ logicmonitor.com, lmgov.us, qa-lmgov.us ]
+    Default: "logicmonitor.com"
   LMAccessId:
     Type: String
     NoEcho: true
@@ -141,10 +146,6 @@ Parameters:
     Type: String
     Description: Use this parameter to apply a subscription filter policy to a subset of log groups in the account. The string can be up to 25KB in length. Example LogGroupName NOT IN ["MyLogGroup", "MyAnotherLogGroup"]
     Default: ""
-  ResourceType:
-    Type: String
-    Description: Type of platform from where logs are coming.
-    Default: "AWS"
 
 Rules:
   NoAccessIdKeyProvided:
@@ -182,6 +183,8 @@ Resources:
         Variables:
           LM_ACCOUNT:
             Ref: LMCompanyName
+          LM_ACCOUNT_DOMAIN:
+            Ref: LMCompanyDomain
           METADATA: !Join [",", !Ref Metadata]
           LOGICMONITOR_ACCESS_ID: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessIdSecret, !Ref LMAccessId],  ""] #!Ref AccessIdSecret, !If [UseLMV1ForAuth, !Ref LMAccessId, "" ]
           LOGICMONITOR_ACCESS_KEY: !If [UseLMV1ForAuth, !If [CreateSecretManager, !Ref AccessKeySecret, !Ref LMAccessKey],  ""]
@@ -194,8 +197,6 @@ Resources:
           ADD_CLOUDWATCH_METADATA: "true"
           LM_TENANT_IDENTIFIER:
             Ref: LMTenantIdentifier
-          RESOURCE_TYPE:
-            Ref: ResourceType
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -409,6 +410,7 @@ Metadata:
         Parameters:
           - FunctionName
           - LMCompanyName
+          - LMCompanyDomain
           - LMAccessId
           - LMAccessKey
           - LMBearerToken
@@ -425,5 +427,4 @@ Metadata:
           - AccountLevelSubscription
           - FilterPattern
           - SelectionCriteria
-          - ResourceType
           

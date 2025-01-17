@@ -174,12 +174,12 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		resoureProp["system.aws.accountid"] = d.Owner
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
 		metadataMap = extractMetadata(awsRegion, "", "eks.amazonaws.com")
-	} else if strings.Contains(d.LogGroup, "bedrock") {
-		if strings.Contains(d.LogGroup, "knowledge-base") || strings.Contains(d.LogGroup, "vendedlogs") {
+	} else if strings.Contains(d.LogGroup, "bedrock"){
+		if strings.Contains(d.LogGroup, "knowledge-base") || strings.Contains(d.LogGroup, "vendedlogs"){
 			resoureProp["system.aws.accountid"] = d.Owner
 			resoureProp["system.cloud.category"] = "AWS/LMAccount"
 			metadataMap = extractMetadata(awsRegion, "", "bedrock.amazonaws.com")
-		} else if strings.Contains(d.LogStream, "modelinvocations") {
+		} else if (strings.Contains(d.LogStream, "modelinvocations")){
 			isBedrockModelLogs = true
 		}
 	} else {
@@ -203,15 +203,15 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 				metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
 
 			}
-			if isBedrockModelLogs && resourceValue == "" {
+			if isBedrockModelLogs  && resourceValue == "" {
 				var messageJson map[string]interface{}
-				if err := json.Unmarshal([]byte(event.Message), &messageJson); err != nil {
-					fmt.Println("err while unmarshalling event message ", err)
+				if err :=json.Unmarshal([]byte(event.Message ), &messageJson); err != nil {
+					fmt.Println("err while unmarshalling event message ",err)
 				}
-				if strings.Contains(messageJson["modelId"].(string), "arn:aws:bedrock") {
+				if(strings.Contains(messageJson["modelId"].(string), "arn:aws:bedrock")){
 					resourceValue = messageJson["modelId"].(string)
-				} else {
-					resourceValue = fmt.Sprintf("arn:aws:bedrock:%s::foundation-model/%s", awsRegion, messageJson["modelId"].(string))
+				}else{
+					resourceValue =fmt.Sprintf("arn:aws:bedrock:%s::foundation-model/%s", awsRegion, messageJson["modelId"].(string))
 				}
 				resoureProp[resourceProperty] = resourceValue
 				metadataMap = extractMetadata(awsRegion, resourceValue, "bedrock.amazonaws.com")
@@ -438,7 +438,12 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 
 	} else if strings.Contains(eventSource, "ec2") {
 		ec2RegexArray := regexCompile(ec2Regex).FindAllStringSubmatch(message, -1)
-		if len(ec2RegexArray) > 1 {
+		if len(ec2RegexArray) == 1 {
+			resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, accountId, ec2RegexArray[0][2])
+			accountLevelLog = false
+		}
+
+		if (len(ec2RegexArray) > 1) {
 			allInstanceIdsSame := true
 			firstElement := ec2RegexArray[0][0]
 			for _, match := range ec2RegexArray {
@@ -448,17 +453,11 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 				}
 			}
 			if allInstanceIdsSame {
-				fmt.Println("All instanceIds in ec2RegexArray are the same. Adding arn field.")
+			  log.Printf("All instanceIds in log are the same. Adding arn field.")
 				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, accountId, ec2RegexArray[0][2])
 				accountLevelLog = false
-			} else {
-				fmt.Println("Not all instanceIds in ec2RegexArray are the same. Logs will be mapped to account.")
 			}
-		} else {
-			resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, accountId, ec2RegexArray[0][2])
-			accountLevelLog = false
 		}
-
 	} else if strings.Contains(eventSource, "sqs") {
 		sqsRegexArray := regexCompile(sqsRegex).FindStringSubmatch(message)
 

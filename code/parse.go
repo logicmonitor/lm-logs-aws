@@ -443,6 +443,21 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 			accountLevelLog = false
 		}
 
+		if (len(ec2RegexArray) > 1) {
+			allInstanceIdsSame := true
+			firstElement := ec2RegexArray[0][0]
+			for _, match := range ec2RegexArray {
+				if match[0] != firstElement {
+					allInstanceIdsSame = false
+					break
+				}
+			}
+			if allInstanceIdsSame {
+			  log.Printf("All instanceIds in log are the same. Adding arn field.")
+				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, accountId, ec2RegexArray[0][2])
+				accountLevelLog = false
+			}
+		}
 	} else if strings.Contains(eventSource, "sqs") {
 		sqsRegexArray := regexCompile(sqsRegex).FindStringSubmatch(message)
 

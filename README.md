@@ -195,3 +195,23 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 5. Go to Log Group created by bedrock as above. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
 6. Logs will start to propagate through lambda to LogIngest.
 7. The Model Invocation logs will be mapped to the Bedrock model resource created in Logicmonitor and the knowledge-base logs will be mapped to the AWS account resource created in Logicmonitor.
+### Send Q Business Logs
+
+1. **Types of Logs Supported by AWS Q Business:**
+   - **User Conversation Logs:**
+     - **Content:** Records of user interactions, including messages and responses.
+     - **Purpose:** Analyze user behavior, identify common queries, and assess response quality.
+   - **Feedback Logs:**
+     - **Content:** User feedback on responses, such as thumbs-up or thumbs-down ratings.
+     - **Purpose:** Gauge user satisfaction and identify areas for improvement.
+   - **API Call Logs:**
+     - **Content:** Details of API requests made to Amazon Q Business services.
+     - **Purpose:** Audit API usage, monitor access patterns, and troubleshoot issues.
+
+2. **Steps to Enable Log Streaming to Amazon CloudWatch:**
+   - **Amazon CloudWatch Logs Setup:**
+     - In the **Amazon Q Business console**, navigate to your application environment.
+     - Go to **Enhancements > Admin Controls and Guardrails**.
+     - Under **Log delivery**, choose **Add** and select **Amazon CloudWatch Logs**.
+     - Specify the **destination log group** and configure additional settings as needed.
+     - **Reference:** [Enabling Amazon Q Business user conversation logging](https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/cw-logs-enable-logging.html)

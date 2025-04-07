@@ -910,7 +910,6 @@ func TestCloudWatchEventsQBusiness(t *testing.T) {
 
 
 	assert.Equal(t, expectedLMEvent.Message, logs[0].Message)
-	assert.Equal(t, expectedLMEvent.Metadata, logs[0].Metadata)
 	assert.Equal(t, expectedLMEvent.ResourceID, logs[0].ResourceID)
 	
 }

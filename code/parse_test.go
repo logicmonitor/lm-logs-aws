@@ -879,7 +879,6 @@ func TestCloudWatchEventsBedrockKB(t *testing.T) {
 
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 	epochMillis := int64(1724850011017)
-	
 	var metadataMap = map[string]interface{}{"_integration": "aws", "_resource.type":"AWS", "_type": "bedrock.amazonaws.com", "logGroup": "/aws/vendedlogs/bedrock/knowledge-base/APPLICATION_LOGS/RTWLKRR7XH", "logStream": "bedrock/knowledgebaseslogs", "_lm.tenantId": "123456"}
 	expectedLMEvent := model.LogInput{
 		Message:    "{\"event_timestamp\":1724850011017,\"event\":{\"ingestion_job_id\":\"GMNMGXKEVG\",\"data_source_id\":\"0N0MGJOTCW\",\"ingestion_job_status\":\"CRAWLING_COMPLETED\",\"knowledge_base_arn\":\"arn:aws:bedrock:us-west-2:280443500820:knowledge-base/RTWLKRR7XH\",\"resource_statistics\":{\"number_of_resources_updated\":0,\"number_of_resources_ingested\":0,\"number_of_resources_scheduled_for_update\":0,\"number_of_resources_scheduled_for_ingestion\":0,\"number_of_resources_scheduled_for_metadata_update\":0,\"number_of_resources_deleted\":0,\"number_of_resources_with_metadata_updated\":0,\"number_of_resources_failed\":0,\"number_of_resources_scheduled_for_deletion\":0}},\"event_version\":\"1.0\",\"event_type\":\"StartIngestionJob.StatusChanged\",\"level\":\"INFO\"}",
@@ -888,6 +887,31 @@ func TestCloudWatchEventsBedrockKB(t *testing.T) {
 		Metadata:   metadataMap,
 	}
 	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsQBusiness(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/42RX2/TMBTFv4q5L7zUxHFuYjsvqEDZJm3A1Aok6BQ5idNGS+IQO63KtO+Omq3T+CPE8z2/e8499w5a45zemNWhN5DCu/lqnl0tlsv52QJmYPedGSAFLhliFDMmOYMZNHZzNtixhxQCvXfBznSlKRu7ccH3fHR1Z5wLdN83daF9bbtg8XnxYZVdfjxbBlUZMZSG0yoqkWKFmqowTyhHyRiPEqyK8sFi6QejW0jh+s1p59ut9sHVQ2KYgRtzVwx1f/R4XzfeDA7Sb3B5dWk3jn4a9K1uenp9isThZlq82JnOH5V3UJeQQiSl4koJVEqFMpFcMc6EQi6EYsgVjxiKhGHIYi5kGMbIBCYcYQa+bo3zuu0hDQUi4zziMXI5O/UKKdyt4VkXWV2uIV3D//SwhtkazDFt9mQ0wZzxmDKkTKxClkYyxfjrJG7sJvOH3kyqx6KmgS4KO3b+5P78odO8sN3ODO6XiIzzMFFC0SpBRVFqTSWPDI3jkplQ5Cws1QS7g/OmzR5PPuEyCWOshKSl0YJiLjjVOY9poZUIC5GrKnnAR2eG32EhVClkXlIT6ogiKqRaCqSxTniFiikt+R/wRG5N0zT2L7mm6blpGvuCXLxsybzVP2xHrmdEd2R+QbRztfO686QabEvmX5avyLndk0J35IJsTdOTgx2Jt6U+vJ7229H3o89a44e6cFntnq7IG1vcmuMplW6c+ad2X/tt1tlMd25vhhNyD/c39z8B64uG+58DAAA=",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	epochMillis := int64(1724850011017)
+	var metadataMap = map[string]interface {}{"_integration":"aws", "_type":"qbusiness.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"application_id\":\"fd3048e2-f3d4-4f4a-91b6-248002364fcd\",\"event_timestamp\":\"2025-04-07T10:38:45Z\",\"log_type\":\"Message\",\"account_id\":\"280443500820\",\"conversation_id\":\"02216979-f649-48aa-823e-55d0e17b01d9\",\"system_message_id\":\"86154f78-dea7-4b72-ab25-ca971c7b9f69\",\"user_message_id\":\"779d78bd-e1a3-4494-a874-5a62f4909a82\",\"user_message\":\"helllo\",\"system_message\":\"Hello! I'm Amazon Q, an AI assistant from AWS. How can I help you today?\",\"output_metrics_is_message_blocked\":false,\"output_metrics_is_message_with_no_answer\":false}",
+		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),
+		ResourceID: map[string]interface {}{"system.aws.arn":"arn:aws:qbusiness::280443500820:application/fd3048e2-f3d4-4f4a-91b6-248002364fcd"},
+		Metadata:   metadataMap,
+	}
+
+
+
+	assert.Equal(t, expectedLMEvent.Message, logs[0].Message)
+	assert.Equal(t, expectedLMEvent.Metadata, logs[0].Metadata)
+	assert.Equal(t, expectedLMEvent.ResourceID, logs[0].ResourceID)
+	
 }
 
 func parseTime(epochMillis int64) time.Time{

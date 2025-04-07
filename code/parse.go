@@ -106,6 +106,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 	var metadataMap = make(map[string]interface{})
 	lmBatch := make([]model.LogInput, 0)
 	d, err := request.AWSLogs.Parse()
+
 	var resourceValue string
 	var resoureProp = make(map[string]interface{})
 	var isEC2NetworkInterface bool = false
@@ -182,6 +183,12 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		} else if (strings.Contains(d.LogStream, "modelinvocations")){
 			isBedrockModelLogs = true
 		}
+	} else if strings.Contains(d.LogGroup, "/aws/vendedlogs/qbusiness/"){
+		re1, _ := regexp.Compile(`qbusiness/application/EVENT_LOGS/(.*)`)
+		instanceId := re1.FindStringSubmatch(d.LogGroup)[1]
+		resourceValue = fmt.Sprintf("arn:aws:qbusiness:%s:%s:application/%s", awsRegion, d.Owner, instanceId)
+		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, resourceValue, "qbusiness.amazonaws.com")
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue

@@ -184,7 +184,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 			isBedrockModelLogs = true
 		}
 	} else if strings.Contains(d.LogGroup, "/aws/vendedlogs/qbusiness/"){
-		re1, _ := regexp.Compile(`qbusiness/application/EVENT_LOGS/(.*)`)
+		re1, _ := regexp.Compile(qbusinessRegex)
 		instanceId := re1.FindStringSubmatch(d.LogGroup)[1]
 		resourceValue = fmt.Sprintf("arn:aws:qbusiness:%s:%s:application/%s", awsRegion, d.Owner, instanceId)
 		resoureProp[resourceProperty] = resourceValue

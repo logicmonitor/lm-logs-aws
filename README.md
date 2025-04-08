@@ -213,5 +213,10 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
      - In the **Amazon Q Business console**, navigate to your application environment.
      - Go to **Enhancements > Admin Controls and Guardrails**.
      - Under **Log delivery**, choose **Add** and select **Amazon CloudWatch Logs**.
-     - Specify the **destination log group** and configure additional settings as needed.
+     - Specify the **destination log group** , make sure to add **"/aws/vendedlogs/qbusiness/"** to the *Destination Log Group*  and configure additional settings as needed.
      - **Reference:** [Enabling Amazon Q Business user conversation logging](https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/cw-logs-enable-logging.html)
+
+3. **Sending logs from Cloudwatch to LM Portal**
+    - In the **Log Group** created for QBusiness logs, go to Subscription *Filter -> Create -> Create Lambda Subscription Filter*
+    - In lambda function select *“LMLogsForwarder”* (or whatever you named the Lambda function during stack creation) and provide Subscription filter name.
+    - Specify Subscription filter name, and click start streaming.

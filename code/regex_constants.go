@@ -18,7 +18,7 @@ var kinesisFirehoseRegex = `("deliveryStreamName":"|"deliveryStreamName": "|:del
 var kinesisDataStreamRegex = `("streamName":"|"streamName": "|:stream/)([^/][^,][^"]*)`
 var ecsStreamRegex = `("cluster":"|"cluster": "|:cluster/)([^/][^,][^"]*)`
 var qbusinessRegex = `qbusiness/application/EVENT_LOGS/(.*)`
-
+var sagemakerEndpointRegex = `Endpoints/([^)]*)`
 func regexCompile(regexStr string) *regexp.Regexp {
 	var regex, _ = regexp.Compile(regexStr)
 	return regex

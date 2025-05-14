@@ -914,6 +914,51 @@ func TestCloudWatchEventsQBusiness(t *testing.T) {
 	
 }
 
+func TestCloudWatchEventsSagemakerEndpoint(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/7XQT2vbQBCH4a+yzFlr7cz+m9VNpIpbaJuCdEtMUOy1vNSWhCQ3hODvXtyQQqH01vPAyzy/VzjFeW672LyMEQr4UDbl45eqrst1BRkMz32coABiZYy2SjEpyOA4dOtpOI9QQN4+z/k1cGq/xymv+t04pH6Z88O561Lf7dttlOPLMkzbg0z9Pk6x30ZJiqxUVqKWiNJ4SUaS0m/teplie4ICyuOxmdr9Pm3zJNXe+zaijZpbfmLnIIP5/DRvpzQuaehv03GJ0wzFPdTv/zRxXhTC5le2+hH75Xp/hbSDAjQHR8b54L31VrPTip01xtrgtA3WeiKD2innjLraHTIFJMhgSac4L+1phAK98ai94aDZZu9zXjf7TWwQC8uFMpljL+4/fb29ExsxDsNRklwOU2x30ojy5qaq68fPd2shRY4urMiaFXpeUWEYmcUDrKtG5GPqO/Gxab7luMIHEKSUUHDJ/mSx4qCsY0RrHaqgDCrDqMmRZ3aaApMmZMNETCb4v7OC0Wz+zQr/j4Vw2Vx+Ats9t/ukAgAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	epochMillis := int64(1724850011017)
+	var metadataMap = map[string]interface {}{"_integration":"aws", "_type":"endpoint.sagemaker.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "2025-05-13T11:58:04,687 [INFO ] pool-2-thread-4 ACCESS_LOG - /169.254.178.2:48188 \"GET /ping HTTP/1.1\" 200 0",
+		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),
+		ResourceID: map[string]interface {}{"system.aws.arn":"arn:aws:sagemaker::280443500820:endpoint/huggingface-pytorch-inference-2025-05-13-11-47-24-203"},
+		Metadata:   metadataMap,
+	}
+
+	assert.Equal(t, expectedLMEvent.Message, logs[0].Message)
+	assert.Equal(t, expectedLMEvent.ResourceID, logs[0].ResourceID)
+	
+}
+
+
+func TestCloudWatchEventsSagemakerProcessingJob(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/63SyWrDMBAG4Fcxc7YS7ZYEPhjiBko3at9KKE6qGhNvWEpDCXn3kqTLtTi+Dcww3/AzB2isc0Vp88/egoFFkiev92mWJcsUQuj2rR3AAFWYcyYwVhRDCHVXLodu14OBebF389OCptjaYf40dBvrXNWWt93aXUYzP9iiAQO/Y8htqm3lUW2LoUUUU4GwQIQjLJHACCskOJ8XddkhgkjEI4oF5wJCcLu12wxV76uuvalqbwcH5gXezyXy1nlYndH0w7b+1DtA9QYGmNKSaSU4ETjSRFISEYplJCOqsaRKCEKVoJIKzBjXQktNmJQcQvBVY50vmh7M9y2CMclk+JMdGIjjOLh7XAZ5muVBlifPeRDHMRzD63jxT/4v9sB52wd4NptdjcuROJkCj0bidApcjcTZFLgeifMJ8AiP+ff0YXH59tXxC53B/ChQBAAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	epochMillis := int64(1724850011017)
+	var metadataMap = map[string]interface {}{"_integration":"aws", "_type":"endpoint.sagemaker.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "=== LOG TEST START ===",
+		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),
+		ResourceID: map[string]interface {}{"system.aws.accountid":"280443500820", "system.cloud.category":"AWS/LMAccount"},
+		Metadata:   metadataMap,
+	}
+
+	assert.Equal(t, expectedLMEvent.Message, logs[0].Message)
+	assert.Equal(t, expectedLMEvent.ResourceID, logs[0].ResourceID)
+	
+}
+
 func parseTime(epochMillis int64) time.Time{
 	epochSeconds := epochMillis / 1000
 	nanoseconds := (epochMillis % 1000) * 1000000

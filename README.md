@@ -195,6 +195,7 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 5. Go to Log Group created by bedrock as above. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
 6. Logs will start to propagate through lambda to LogIngest.
 7. The Model Invocation logs will be mapped to the Bedrock model resource created in Logicmonitor and the knowledge-base logs will be mapped to the AWS account resource created in Logicmonitor.
+
 ### Send Q Business Logs
 
 1. **Types of Logs Supported by AWS Q Business:**
@@ -220,3 +221,33 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
     - In the **Log Group** created for QBusiness logs, go to Subscription *Filter -> Create -> Create Lambda Subscription Filter*
     - In lambda function select *“LMLogsForwarder”* (or whatever you named the Lambda function during stack creation) and provide Subscription filter name.
     - Specify Subscription filter name, and click start streaming.
+
+
+<!-- ### Send Sagemaker logs
+1. There are three types of logs which we are supporting for AWS Sagemaker, that can be sent to AWS Cloudwatch: 
+    -Training Job Logs
+    -Processing Job Logs
+    -Endpoint Logs
+2. For setting these up we need to create the respective instances and we get respective groups created in cloudwatch, where the logs are sent.
+   Its `aws/Sagemaker/TrainingJobs`, `aws/Sagemaker/ProcessingJobs` and  `aws/Sagemaker/<name of endpoint instance>`.
+3. Go to Log Group created by Sagemaker as above. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+3. Logs will start to propagate through lambda to LogIngest.
+5. The Endpoint logs will be mapped to the Endpoint resource discovered in Logicmonitor and the TrainingJob and ProcessingJob logs will be mapped to the AWS account resource created in Logicmonitor. -->
+
+
+### Send Sagemaker logs
+
+To send AWS SageMaker logs to AWS CloudWatch, three log types are supported: ` Training Job Logs, Processing Job Logs, and Endpoint Logs `. For each log type, you need to create the corresponding instances, which will generate CloudWatch log groups where the logs will be sent. These log groups include:
+
+`aws/Sagemaker/TrainingJobs`
+`aws/Sagemaker/ProcessingJobs`
+`aws/Sagemaker/<endpoint_name>`
+
+To set up log forwarding, follow these steps:
+
+  1. Navigate to the log group created by SageMaker in CloudWatch.
+  2. Go to Actions > Subscription Filters > Create Lambda Subscription Filter.
+  3. In the Lambda function dropdown, select the function you created (e.g., “LMLogsForwarder”).
+  4. Provide a name for the subscription filter and click Start Streaming.
+
+The logs will now flow through the Lambda function to LogIngest. SageMaker endpoint logs will be mapped to the corresponding endpoint resource in LogicMonitor, while the Training and Processing Job logs will be mapped to the AWS account resource created in LogicMonitor.

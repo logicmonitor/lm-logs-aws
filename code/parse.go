@@ -189,7 +189,20 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 		resourceValue = fmt.Sprintf("arn:aws:qbusiness:%s:%s:application/%s", awsRegion, d.Owner, instanceId)
 		resoureProp[resourceProperty] = resourceValue
 		metadataMap = extractMetadata(awsRegion, resourceValue, "qbusiness.amazonaws.com")
-	} else {
+	} else if strings.Contains(d.LogGroup, "/aws/sagemaker"){
+			if strings.Contains(d.LogGroup,"aws/sagemaker/TrainingJobs")|| strings.Contains(d.LogGroup,"aws/sagemaker/ProcessingJobs"){
+				resoureProp["system.aws.accountid"] = d.Owner
+       			resoureProp["system.cloud.category"] = "AWS/LMAccount"
+				metadataUrl := strings.Split(d.LogGroup, "/")[3] + ".sagemaker.amazonaws.com"
+				metadataMap = extractMetadata(awsRegion, "" , metadataUrl)
+			} else if strings.Contains(d.LogGroup,"/aws/sagemaker/Endpoints"){
+					re1, _ := regexp.Compile(sagemakerEndpointRegex)
+					instanceId := re1.FindStringSubmatch(d.LogGroup)[1]
+					resourceValue = fmt.Sprintf("arn:aws:sagemaker:%s:%s:endpoint/%s",awsRegion, d.Owner,instanceId)
+					resoureProp[resourceProperty] = resourceValue
+					metadataMap = extractMetadata(awsRegion, resourceValue, "sagemaker.endpoint.amazonaws.com")
+			}
+	}else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
 		metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")

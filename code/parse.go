@@ -386,6 +386,8 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 	accountLevelLog := true
 	var resoureIDMap = make(map[string]interface{})
 	var resourceProperty string = "system.aws.arn"
+	var applicationId string
+	var jsonMap map[string]interface{}
 
 	if strings.Contains(eventSource, "firehose") {
 		deliveryStreamArray := regexCompile(kinesisFirehoseRegex).FindStringSubmatch(message)
@@ -496,14 +498,9 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 		}
 
 	}  else if strings.Contains(eventSource, "qbusiness") {
-    fmt.Sprintf("#### inside qbusiness block ")
-    fmt.Printf("#### inside qbusiness block via printf ")
     // Regex to match application ID from ARN-like values: application/<UUID>
     qBusinessAppRegex := regexp.MustCompile(qbusinessApplicationIdRegex)
-    var applicationId string
 
-    // Extract requestParameters as JSON
-    var jsonMap map[string]interface{}
     if err := json.Unmarshal([]byte(message), &jsonMap); err == nil {
       if reqParams, ok := jsonMap["requestParameters"].(map[string]interface{}); ok {
         // Priority 1: Direct applicationId field

@@ -495,7 +495,41 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 			}
 		}
 
-	}
+	}  else if strings.Contains(eventSource, "qbusiness") {
+    fmt.Sprintf("#### inside qbusiness block ")
+    fmt.Printf("#### inside qbusiness block via printf ")
+    // Regex to match application ID from ARN-like values: application/<UUID>
+    qBusinessAppRegex := regexp.MustCompile(qbusinessApplicationIdRegex)
+    var applicationId string
+
+    // Extract requestParameters as JSON
+    var jsonMap map[string]interface{}
+    if err := json.Unmarshal([]byte(message), &jsonMap); err == nil {
+      if reqParams, ok := jsonMap["requestParameters"].(map[string]interface{}); ok {
+        // Priority 1: Direct applicationId field
+        if id, ok := reqParams["applicationId"].(string); ok && id != "" {
+          applicationId = id
+        }
+
+        // Priority 2: Scan all keys for value matching "application/<applicationId>"
+        if applicationId == "" {
+          for _, v := range reqParams {
+            if strVal, ok := v.(string); ok {
+              if match := qBusinessAppRegex.FindStringSubmatch(strVal); len(match) > 1 {
+                applicationId = match[1]
+                break
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if applicationId != "" {
+      resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:qbusiness:%s:%s:application/%s", awsRegion, accountId, applicationId)
+      accountLevelLog = false
+    }
+  }
 
 	if accountLevelLog {
 		resoureIDMap["system.aws.accountid"] = accountId

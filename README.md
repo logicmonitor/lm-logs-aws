@@ -251,3 +251,27 @@ To set up log forwarding, follow these steps:
   4. Provide a name for the subscription filter and click Start Streaming.
 
 The logs will now flow through the Lambda function to LogIngest. SageMaker endpoint logs will be mapped to the corresponding endpoint resource in LogicMonitor, while the Training and Processing Job logs will be mapped to the AWS account resource created in LogicMonitor.
+
+### Send Q Business API Call Logs using cloudtrail
+
+To send API call logs from AWS Q Business to LogicMonitor using cloudtrail, follow these steps: 
+1. **Enable CloudTrail for Management Events:**
+   - Open the AWS Console > CloudTrail > Trails
+   - Click Create trail or edit an existing trail
+   - Under Management events:
+     - Enable Read and Write management events 
+     - This will capture all AwsApiCall events — including those from **qbusiness.amazonaws.com**
+2. **Forward Events to CloudWatch Logs**
+   - In the same CloudTrail trail configuration, under CloudWatch Logs:
+     - Enable CloudWatch Logs
+     - Specify a log group name (e.g., `/aws/cloudtrail/qbusiness`)
+     - Create or select an IAM role that allows CloudTrail to publish logs to CloudWatch
+3. **Create Lambda Subscription Filter**
+   - Go to the CloudWatch Logs console
+   - Select the log group created in step 2 (e.g., `/aws/cloudtrail/qbusiness`)
+   - Click on Actions > Create Lambda subscription filter
+   - Choose the Lambda function you created (e.g., “LMLogsForwarder”)
+   - Provide a name for the subscription filter and click Start streaming
+4. **Verify Logs in LogicMonitor**
+   - After a few minutes, check your LogicMonitor portal to see if the API call logs from AWS Q Business are being ingested correctly.
+   - The logs should be associated with the AWS account resource created in LogicMonitor.

@@ -386,6 +386,8 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 	accountLevelLog := true
 	var resoureIDMap = make(map[string]interface{})
 	var resourceProperty string = "system.aws.arn"
+	var applicationId string
+	var jsonMap map[string]interface{}
 
 	if strings.Contains(eventSource, "firehose") {
 		deliveryStreamArray := regexCompile(kinesisFirehoseRegex).FindStringSubmatch(message)
@@ -495,7 +497,36 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 			}
 		}
 
-	}
+	}  else if strings.Contains(eventSource, "qbusiness") {
+    // Regex to match application ID from ARN-like values: application/<UUID>
+    qBusinessAppRegex := regexp.MustCompile(qbusinessApplicationIdRegex)
+
+    if err := json.Unmarshal([]byte(message), &jsonMap); err == nil {
+      if reqParams, ok := jsonMap["requestParameters"].(map[string]interface{}); ok {
+        // Priority 1: Direct applicationId field
+        if id, ok := reqParams["applicationId"].(string); ok && id != "" {
+          applicationId = id
+        }
+
+        // Priority 2: Scan all keys for value matching "application/<applicationId>"
+        if applicationId == "" {
+          for _, v := range reqParams {
+            if strVal, ok := v.(string); ok {
+              if match := qBusinessAppRegex.FindStringSubmatch(strVal); len(match) > 1 {
+                applicationId = match[1]
+                break
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if applicationId != "" {
+      resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:qbusiness:%s:%s:application/%s", awsRegion, accountId, applicationId)
+      accountLevelLog = false
+    }
+  }
 
 	if accountLevelLog {
 		resoureIDMap["system.aws.accountid"] = accountId

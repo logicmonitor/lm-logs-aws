@@ -274,4 +274,4 @@ To send API call logs from AWS Q Business to LogicMonitor using cloudtrail, foll
    - Provide a name for the subscription filter and click Start streaming
 4. **Verify Logs in LogicMonitor**
    - After a few minutes, check your LogicMonitor portal to see if the API call logs from AWS Q Business are being ingested correctly.
-   - The logs should be associated with the AWS account resource created in LogicMonitor.
+   - The logs should be associated with the AWS account resource created in your LogicMonitor portal.

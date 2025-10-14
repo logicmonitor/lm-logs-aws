@@ -479,15 +479,7 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, accountId, ec2RegexArray[0][2])
 				accountLevelLog = false
 			}
-		} else if eventSource == "s3.amazonaws.com" {
-			s3RegexArray := s3Regex.FindStringSubmatch(event.Message)
-			s3Arn := s3Regex.SubexpIndex("arn")
-
-			if len(s3RegexArray) > 0 && s3Arn != 0 {
-				resoureIDMap["system.aws.arn"] = fmt.Sprintf(s3RegexArray[s3Arn])
-				accountLevelLog = false
-			}
-		}
+		} 
 	} else if strings.Contains(eventSource, "sqs") {
 		sqsRegexArray := regexCompile(sqsRegex).FindStringSubmatch(message)
 

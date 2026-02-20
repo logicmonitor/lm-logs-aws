@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine as base
+FROM golang:1.24-alpine as base
 ENV GOOS linux
 ENV GOARCH amd64
 ENV CGO_ENABLED 0
@@ -15,7 +15,7 @@ RUN go build -o bootstrap *.go \
 FROM base as test
 RUN go test
 RUN wget -O- -nv 'https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh' \
-    | sh -s -- -b "$(go env GOPATH)/bin" 'v1.49.0'
+    | sh -s -- -b "$(go env GOPATH)/bin" 'v1.62.2'
 RUN golangci-lint run .
 
 FROM alpine as release

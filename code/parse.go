@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -263,7 +263,7 @@ func decompressGzip(content string) string {
 
 	defer ioReaderContent.Close()
 
-	strContent, _ := ioutil.ReadAll(ioReaderContent)
+	strContent, _ := io.ReadAll(ioReaderContent)
 	return string(strContent)
 }
 
@@ -302,20 +302,20 @@ func extractMetadataForCloudTrail(message string) map[string]interface{} {
 			regionRegexArray := regexCompile(awsRegionRegex).FindStringSubmatch(message)
 			awsRegion := regexCompile(awsRegionRegex).SubexpIndex("awsRegion")
 			if len(regionRegexArray) > 0 && awsRegion != 0 {
-				metadataMap["region"] = fmt.Sprintf(regionRegexArray[awsRegion])
+				metadataMap["region"] = fmt.Sprintf("%s",regionRegexArray[awsRegion])
 			}
 		} else if strings.TrimSpace(str) == "arn" {
 			arnRegexArray := regexCompile(awsARNRegex).FindStringSubmatch(message)
 			awsARN := regexCompile(awsARNRegex).SubexpIndex("arn")
 			if len(arnRegexArray) > 0 && awsARN != 0 {
-				metadataMap["arn"] = fmt.Sprintf(arnRegexArray[awsARN])
+				metadataMap["arn"] = fmt.Sprintf("%s",arnRegexArray[awsARN])
 			}
 		}
 	}
 	eventSourceRegexArray := regexCompile(awsEventSourceRegex).FindStringSubmatch(message)
 	eventSourceRegex := regexCompile(awsEventSourceRegex).SubexpIndex("eventSource")
 	if len(eventSourceRegexArray) > 0 && eventSourceRegex != 0 {
-		metadataMap["_type"] = fmt.Sprintf(eventSourceRegexArray[eventSourceRegex])
+		metadataMap["_type"] = fmt.Sprintf("%s",eventSourceRegexArray[eventSourceRegex])	
 	}
 	addCustomMetadataFromRawJson(metadataMap, message, defaultJsonMetadataKeys)
 	if strings.TrimSpace(lmTenantID) != "" {
@@ -418,7 +418,7 @@ func processResourceMapping(message string, accountId string) map[string]interfa
 				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:s3:::%s", s3RegexArray[s3Bucket])
 				accountLevelLog = false
 			} else if s3RegexArray[s3Arn] != "" {
-				resoureIDMap[resourceProperty] = fmt.Sprintf(s3RegexArray[s3Arn])
+				resoureIDMap[resourceProperty] = fmt.Sprintf("%s",s3RegexArray[s3Arn])
 				accountLevelLog = false
 			}
 		}
@@ -561,9 +561,9 @@ func parseCloudWatchEvents(request events.CloudWatchEvent) []model.LogInput {
 		cloudwatchResourceRegexArray := regexCompile(cloudwatchResourceRegex).FindStringSubmatch(event)
 		cloudwatchResource := regexCompile(cloudwatchResourceRegex).SubexpIndex("resources")
 		if len(cloudwatchResourceRegexArray) > 0 && cloudwatchResource != 0 {
-			resoureIDMap["system.aws.arn"] = fmt.Sprintf(cloudwatchResourceRegexArray[cloudwatchResource])
+			resoureIDMap["system.aws.arn"] = fmt.Sprintf("%s",cloudwatchResourceRegexArray[cloudwatchResource])
 		}
-		metadataMap = extractMetadata(request.Region, fmt.Sprintf(cloudwatchResourceRegexArray[cloudwatchResource]), request.Source)
+		metadataMap = extractMetadata(request.Region, fmt.Sprintf("%s",cloudwatchResourceRegexArray[cloudwatchResource]), request.Source)
 
 	}
 

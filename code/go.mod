@@ -1,11 +1,26 @@
 module lm-logs-aws
 
-go 1.14
+go 1.24.0
 
 require (
-	github.com/aws/aws-lambda-go v1.41.0
-	github.com/aws/aws-sdk-go v1.44.287
-	github.com/logicmonitor/lm-data-sdk-go v1.3.0
-	github.com/stretchr/testify v1.8.4
+	github.com/aws/aws-lambda-go v1.52.0
+	github.com/aws/aws-sdk-go v1.55.8
+	github.com/logicmonitor/lm-data-sdk-go v1.3.4
+	github.com/stretchr/testify v1.11.1
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/hashicorp/go-version v1.8.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.51.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.51.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

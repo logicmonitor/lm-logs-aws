@@ -52,6 +52,8 @@ Mappings:
       "LayerArn": "arn:aws:lambda:ap-southeast-2:665172237481:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
     ap-southeast-3:
       "LayerArn": "arn:aws:lambda:ap-southeast-3:490737872127:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
+    ap-southeast-6:
+      "LayerArn": "arn:aws:lambda:ap-southeast-6:995508174458:layer:AWS-Parameters-and-Secrets-Lambda-Extension:42"
     ap-south-1:
       "LayerArn": "arn:aws:lambda:ap-south-1:176022468876:layer:AWS-Parameters-and-Secrets-Lambda-Extension:4"
     sa-east-1:

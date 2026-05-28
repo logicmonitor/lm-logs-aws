@@ -202,7 +202,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 					resoureProp[resourceProperty] = resourceValue
 					metadataMap = extractMetadata(awsRegion, resourceValue, "sagemaker.endpoint.amazonaws.com")
 			}
-	}else {
+	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
 		metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")

@@ -25,26 +25,31 @@ func getSecretValue(secretArn string) string {
 
 	req, err := http.NewRequest("GET", secrets_extension_endpoint, nil)
 	if err != nil {
-		log.Println("Error creating HTTP request to secrets extension: ", err)
+		log.Println("Error creating HTTP request to secrets extension")
 		return ""
 	}
 	req.Header.Add("X-Aws-Parameters-Secrets-Token", os.Getenv("AWS_SESSION_TOKEN"))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println("Error sending HTTP request to secrets extension: ", err)
+		log.Println("Error sending HTTP request to secrets extension")
 		return ""
 	}
+	defer resp.Body.Close()
 
-	// Read the response body
+	if resp.StatusCode != http.StatusOK {
+		log.Println("Secrets extension returned a non-success status")
+		return ""
+	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading HTTP response body:", err)
+		log.Println("Error reading HTTP response body from secrets extension")
 		return ""
 	}
 
 	if err := json.Unmarshal(body, &objmap); err != nil {
-		log.Println(err)
+		log.Println("Error parsing secrets extension response")
+		return ""
 	}
 
 	str := fmt.Sprintf("%v", objmap["SecretString"])

@@ -4,20 +4,27 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
+	"github.com/logicmonitor/lm-data-sdk-go/model"
+	jsonq "github.com/thedevsaddam/gojsonq/v2"
 )
 
-var s3Regex, _ = regexp.Compile(`("ARN":")(?P<arn>[^/][^,][^"]*)`)
+var defaultJsonMetadataKeys []string
+var addCloudWatchMetadata = false
+var metadataArray []string
+var lmTenantID string
+var resourceType string
+var goJsonQ = jsonq.New()
 
-func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]ingest.Log, error) {
-	lmBatch := make([]ingest.Log, 0)
+func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) ([]model.LogInput, error) {
+	lmBatch := make([]model.LogInput, 0)
 
 	bucketName := request.Records[0].S3.Bucket.Name
 	key := request.Records[0].S3.Object.Key
@@ -30,15 +37,13 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 
 	keySplit := strings.Split(key, "_")
 
-	re := regexp.MustCompile(`AWSLogs\/(.*)\/elasticloadbalancing`)
-	accountIDMatches := re.FindStringSubmatch(keySplit[0])
+	accountIDMatches := regexCompile(elbAccountId).FindStringSubmatch(keySplit[0])
 	if len(accountIDMatches) < 2 {
 		return lmBatch, fmt.Errorf("failed to parse accountId for: %s", key)
 	}
 	accountId := accountIDMatches[1]
 
-	re = regexp.MustCompile(`\/elasticloadbalancing\/(.*?)\/`)
-	regionMatches := re.FindStringSubmatch(keySplit[0])
+	regionMatches := regexCompile(elbRegion).FindStringSubmatch(keySplit[0])
 	if len(regionMatches) < 2 {
 		return lmBatch, fmt.Errorf("failed to parse region for: %s", key)
 	}
@@ -50,12 +55,14 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 
 	arn := fmt.Sprintf("arn:aws:elasticloadbalancing:%s:%s:loadbalancer/%s", region, accountId, elbName)
 
+	metadataMap := extractMetadata(region, arn, "elb.amazonaws.com")
 	for _, message := range allMessages {
 
-		log := ingest.Log{
+		log := model.LogInput{
 			Message:    message,
-			ResourceID: map[string]string{"system.aws.arn": arn},
-			Timestamp:  request.Records[0].EventTime,
+			ResourceID: map[string]interface{}{"system.aws.arn": arn},
+			Timestamp:  request.Records[0].EventTime.String(),
+			Metadata:   metadataMap,
 		}
 
 		lmBatch = append(lmBatch, log)
@@ -63,10 +70,11 @@ func parseELBlogs(request events.S3Event, getContentsFromS3Bucket GetContentFrom
 	return lmBatch, nil
 }
 
-func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []ingest.Log {
+func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS3Bucket) []model.LogInput {
 	var arn string
 	bucketName := request.Records[0].S3.Bucket.Name
 	fileName := request.Records[0].S3.Object.Key
+	lmBatch := make([]model.LogInput, 0)
 
 	content := getContentsFromS3Bucket(bucketName, fileName)
 
@@ -80,12 +88,12 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 		arn = fmt.Sprintf("arn:aws:s3:::%s", bucketName)
 	}
 
-	lmBatch := make([]ingest.Log, 0)
-
-	lmEv := ingest.Log{
+	metadataMap := extractMetadata(request.Records[0].AWSRegion, arn, request.Records[0].EventSource)
+	lmEv := model.LogInput{
 		Message:    content,
-		ResourceID: map[string]string{"system.aws.arn": arn},
-		Timestamp:  request.Records[0].EventTime,
+		ResourceID: map[string]interface{}{"system.aws.arn": arn},
+		Timestamp:  request.Records[0].EventTime.String(),
+		Metadata:   metadataMap,
 	}
 
 	lmBatch = append(lmBatch, lmEv)
@@ -93,15 +101,17 @@ func parseS3logs(request events.S3Event, getContentsFromS3Bucket GetContentFromS
 	return lmBatch
 }
 
-func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
+func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []model.LogInput {
 
-	lmBatch := make([]ingest.Log, 0)
+	var metadataMap = make(map[string]interface{})
+	lmBatch := make([]model.LogInput, 0)
 	d, err := request.AWSLogs.Parse()
-	var resourceValue string
-	var resoureProp = make(map[string]string)
-	var isEC2NetworkInterface bool = false
-	var resourceProperty string = "system.aws.arn"
 
+	var resourceValue string
+	var resoureProp = make(map[string]interface{})
+	var isEC2NetworkInterface bool = false
+	var isBedrockModelLogs bool = false
+	var resourceProperty string = "system.aws.arn"
 	if d.LogGroup == "RDSOSMetrics" {
 		rdsEnhancedEvent := make(map[string]interface{})
 		err := json.Unmarshal([]byte(d.LogEvents[0].Message), &rdsEnhancedEvent)
@@ -109,6 +119,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		rdsInstance := rdsEnhancedEvent["instanceID"]
 		resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, resourceValue, "rds.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/rds") {
 		splitLogGroup := strings.Split(d.LogGroup, "/")
 		if splitLogGroup[len(splitLogGroup)-1] == "networkInterface" {
@@ -116,12 +127,15 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 			splitLogStream := strings.Split(d.LogStream, "-")
 			resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 			resoureProp[resourceProperty] = resourceValue
+			metadataMap = extractMetadata(awsRegion, "", "rds.amazonaws.com")
+
 		} else {
-			re1, _ := regexp.Compile(`/aws/rds/(instance|cluster)/([^/]*)`)
-			result := re1.FindStringSubmatch(d.LogGroup)
+			result := regexCompile(rdsInstanceRegex).FindStringSubmatch(d.LogGroup)
 			rdsInstance := result[2]
 			resourceValue = fmt.Sprintf("arn:aws:rds:%s:%s:db:%s", awsRegion, d.Owner, rdsInstance)
 			resoureProp[resourceProperty] = resourceValue
+			metadataMap = extractMetadata(awsRegion, resourceValue, "rds.amazonaws.com")
+
 		}
 	} else if d.LogGroup != "/aws/lambda/lm" && strings.Contains(d.LogGroup, "/aws/lambda") {
 		re1, _ := regexp.Compile(`aws/lambda/(.*)`)
@@ -129,6 +143,7 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		lambdaName := result[1]
 		resourceValue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, lambdaName)
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, resourceValue, "lambda.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/ec2/networkInterface") {
 		isEC2NetworkInterface = true
 	} else if strings.Contains(d.LogGroup, "/aws/natGateway/networkInterface") {
@@ -136,32 +151,67 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 		splitLogStream := strings.Split(d.LogStream, "-")
 		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, "", "natGateway.amazonaws.com")
+
 	} else if strings.Contains(d.LogGroup, "/aws/kinesisfirehose") {
 		splitLogGroup := strings.Split(d.LogGroup, "/")
-		resourceValue = splitLogGroup[3]
-		resoureProp[resourceProperty] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, d.Owner, resourceValue)
+		resourceValue = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, d.Owner, splitLogGroup[3])
+		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, resourceValue, "firehose.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/elb/networkInterface") {
 		resourceProperty = "system.aws.networkInterfaceId"
 		splitLogStream := strings.Split(d.LogStream, "-")
 		resourceValue = splitLogStream[0] + "-" + splitLogStream[1]
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, "", "networkInterfaceId.amazonaws.com")
+
 	} else if strings.Contains(d.LogGroup, "/aws/fargate") {
 		resoureProp["system.aws.accountid"] = d.Owner
 		resoureProp["system.cloud.category"] = "AWS/LMAccount"
+		metadataMap = extractMetadata(awsRegion, "", "fargate.amazonaws.com")
 	} else if strings.Contains(d.LogGroup, "/aws/cloudtrail") {
 		return parseCloudTrailLogs(d)
-	} else if strings.Contains(d.LogGroup, "/aws/eks") {
-		re1, _ := regexp.Compile(`aws/eks/(.*)/cluster`)
-		result := re1.FindStringSubmatch(d.LogGroup)
-		eksName := result[1]
-		resourceValue = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, d.Owner, eksName)
+	} else if strings.Contains(d.LogGroup, "/aws/eks") || strings.Contains(d.LogGroup, "/aws/containerinsights") {
+		resoureProp["system.aws.accountid"] = d.Owner
+		resoureProp["system.cloud.category"] = "AWS/LMAccount"
+		metadataMap = extractMetadata(awsRegion, "", "eks.amazonaws.com")
+	} else if strings.Contains(d.LogGroup, "bedrock"){
+		if strings.Contains(d.LogGroup, "knowledge-base") || strings.Contains(d.LogGroup, "vendedlogs"){
+			resoureProp["system.aws.accountid"] = d.Owner
+			resoureProp["system.cloud.category"] = "AWS/LMAccount"
+			metadataMap = extractMetadata(awsRegion, "", "bedrock.amazonaws.com")
+		} else if (strings.Contains(d.LogStream, "modelinvocations")){
+			isBedrockModelLogs = true
+		}
+	} else if strings.Contains(d.LogGroup, "/aws/vendedlogs/qbusiness/"){
+		re1, _ := regexp.Compile(qbusinessRegex)
+		instanceId := re1.FindStringSubmatch(d.LogGroup)[1]
+		resourceValue = fmt.Sprintf("arn:aws:qbusiness:%s:%s:application/%s", awsRegion, d.Owner, instanceId)
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, resourceValue, "qbusiness.amazonaws.com")
+	} else if strings.Contains(d.LogGroup, "/aws/sagemaker"){
+			if strings.Contains(d.LogGroup,"aws/sagemaker/TrainingJobs")|| strings.Contains(d.LogGroup,"aws/sagemaker/ProcessingJobs"){
+				resoureProp["system.aws.accountid"] = d.Owner
+       			resoureProp["system.cloud.category"] = "AWS/LMAccount"
+				metadataUrl := strings.Split(d.LogGroup, "/")[3] + ".sagemaker.amazonaws.com"
+				metadataMap = extractMetadata(awsRegion, "" , metadataUrl)
+			} else if strings.Contains(d.LogGroup,"/aws/sagemaker/Endpoints"){
+					re1, _ := regexp.Compile(sagemakerEndpointRegex)
+					instanceId := re1.FindStringSubmatch(d.LogGroup)[1]
+					resourceValue = fmt.Sprintf("arn:aws:sagemaker:%s:%s:endpoint/%s",awsRegion, d.Owner,instanceId)
+					resoureProp[resourceProperty] = resourceValue
+					metadataMap = extractMetadata(awsRegion, resourceValue, "sagemaker.endpoint.amazonaws.com")
+			}
 	} else {
 		resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, d.LogStream)
 		resoureProp[resourceProperty] = resourceValue
+		metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
 	}
 
 	handleFatalError("failed to parse cloudwatch event", err)
+
+	cloudWatchEventMetadata := make(map[string]interface{})
+	addCloudWatchEventMetadata(cloudWatchEventMetadata, &d)
 
 	for _, event := range d.LogEvents {
 		if strings.TrimSpace(event.Message) != "" {
@@ -170,12 +220,31 @@ func parseCloudWatchLogs(request events.CloudwatchLogsEvent) []ingest.Log {
 				ec2InstanceID := splitEventMessage[0]
 				resourceValue = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, d.Owner, ec2InstanceID)
 				resoureProp[resourceProperty] = resourceValue
-			}
+				metadataMap = extractMetadata(awsRegion, resourceValue, "ec2.amazonaws.com")
 
-			lmEv := ingest.Log{
+			}
+			if isBedrockModelLogs  && resourceValue == "" {
+				var messageJson map[string]interface{}
+				if err :=json.Unmarshal([]byte(event.Message ), &messageJson); err != nil {
+					fmt.Println("err while unmarshalling event message ",err)
+				}
+				if(strings.Contains(messageJson["modelId"].(string), "arn:aws:bedrock")){
+					resourceValue = messageJson["modelId"].(string)
+				}else{
+					resourceValue =fmt.Sprintf("arn:aws:bedrock:%s::foundation-model/%s", awsRegion, messageJson["modelId"].(string))
+				}
+				resoureProp[resourceProperty] = resourceValue
+				metadataMap = extractMetadata(awsRegion, resourceValue, "bedrock.amazonaws.com")
+
+			}
+			addCustomMetadataFromRawJson(metadataMap, event.Message, defaultJsonMetadataKeys)
+			mergeMaps(metadataMap, cloudWatchEventMetadata)
+
+			lmEv := model.LogInput{
 				Message:    event.Message,
 				ResourceID: resoureProp,
-				Timestamp:  time.Unix(0, event.Timestamp*1000000),
+				Timestamp:  time.Unix(0, event.Timestamp*1000000).String(),
+				Metadata:   metadataMap,
 			}
 			lmBatch = append(lmBatch, lmEv)
 		}
@@ -194,65 +263,320 @@ func decompressGzip(content string) string {
 
 	defer ioReaderContent.Close()
 
-	strContent, _ := ioutil.ReadAll(ioReaderContent)
+	strContent, _ := io.ReadAll(ioReaderContent)
 	return string(strContent)
 }
 
-func parseCloudTrailLogs(data events.CloudwatchLogsData) []ingest.Log {
-	lmBatch := make([]ingest.Log, 0)
+func parseCloudTrailLogs(data events.CloudwatchLogsData) []model.LogInput {
+	lmBatch := make([]model.LogInput, 0)
 
+	cloudWatchMetadata := make(map[string]interface{})
+	addCloudWatchEventMetadata(cloudWatchMetadata, &data)
 	for _, event := range data.LogEvents {
-		var resoureIDMap = make(map[string]string)
-		eventSourceRegex, _ := regexp.Compile(`("eventSource":")([^",]*)`)
-		eventSourceArray := eventSourceRegex.FindStringSubmatch(event.Message)
-		eventSource := eventSourceArray[2]
+		metadataMap := extractMetadataForCloudTrail(event.Message)
+		mergeMaps(metadataMap, cloudWatchMetadata)
+		resoureIDMap := processResourceMapping(event.Message, data.Owner)
 
-		accountLevelLog := true
-
-		if eventSource == "firehose.amazonaws.com" {
-			kinesisFirehoseRegex, _ := regexp.Compile(`("deliveryStreamName":"|"deliveryStreamName": "|:deliverystream/)([^/][^,][^"]*)`)
-			deliveryStreamArray := kinesisFirehoseRegex.FindStringSubmatch(event.Message)
-			if len(deliveryStreamArray) > 2 {
-				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, data.Owner, deliveryStreamArray[2])
-				accountLevelLog = false
-			}
-		} else if eventSource == "kinesis.amazonaws.com" {
-			kinesisDataStreamRegex, _ := regexp.Compile(`("streamName":"|"streamName": "|:stream/)([^/][^,][^"]*)`)
-			dataStreamArray := kinesisDataStreamRegex.FindStringSubmatch(event.Message)
-			if len(dataStreamArray) > 2 {
-				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:kinesis:%s:%s:stream/%s", awsRegion, data.Owner, dataStreamArray[2])
-				accountLevelLog = false
-			}
-		} else if eventSource == "ecs.amazonaws.com" {
-			ecsStreamRegex, _ := regexp.Compile(`("cluster":"|"cluster": "|:cluster/)([^/][^,][^"]*)`)
-
-			ecsStreamArray := ecsStreamRegex.FindStringSubmatch(event.Message)
-
-			if len(ecsStreamArray) > 2 {
-				resoureIDMap["system.aws.arn"] = fmt.Sprintf("arn:aws:ecs:%s:%s:cluster/%s", awsRegion, data.Owner, ecsStreamArray[2])
-				accountLevelLog = false
-			}
-		} else if eventSource == "s3.amazonaws.com" {
-			s3RegexArray := s3Regex.FindStringSubmatch(event.Message)
-			s3Arn := s3Regex.SubexpIndex("arn")
-
-			if len(s3RegexArray) > 0 && s3Arn != 0 {
-				resoureIDMap["system.aws.arn"] = fmt.Sprintf(s3RegexArray[s3Arn])
-				accountLevelLog = false
-			}
-		}
-
-		if accountLevelLog {
-			resoureIDMap["system.aws.accountid"] = data.Owner
-			resoureIDMap["system.cloud.category"] = "AWS/LMAccount"
-		}
-
-		lmEv := ingest.Log{
+		lmEv := model.LogInput{
 			Message:    event.Message,
 			ResourceID: resoureIDMap,
-			Timestamp:  time.Unix(0, event.Timestamp*1000000),
+			Timestamp:  time.Unix(0, event.Timestamp*1000000).String(),
+			Metadata:   metadataMap,
+		}
+
+		if debug {
+			log.Printf("request generated to lm-logs api: %s\n", lmEv)
 		}
 		lmBatch = append(lmBatch, lmEv)
+	}
+
+	return lmBatch
+
+}
+
+func extractMetadataForCloudTrail(message string) map[string]interface{} {
+	var metadataMap = make(map[string]interface{})
+	metadataMap["_integration"] = "aws"
+	for _, str := range metadataArray {
+		if strings.TrimSpace(str) == "awsRegion" {
+			regionRegexArray := regexCompile(awsRegionRegex).FindStringSubmatch(message)
+			awsRegion := regexCompile(awsRegionRegex).SubexpIndex("awsRegion")
+			if len(regionRegexArray) > 0 && awsRegion != 0 {
+				metadataMap["region"] = fmt.Sprintf("%s",regionRegexArray[awsRegion])
+			}
+		} else if strings.TrimSpace(str) == "arn" {
+			arnRegexArray := regexCompile(awsARNRegex).FindStringSubmatch(message)
+			awsARN := regexCompile(awsARNRegex).SubexpIndex("arn")
+			if len(arnRegexArray) > 0 && awsARN != 0 {
+				metadataMap["arn"] = fmt.Sprintf("%s",arnRegexArray[awsARN])
+			}
+		}
+	}
+	eventSourceRegexArray := regexCompile(awsEventSourceRegex).FindStringSubmatch(message)
+	eventSourceRegex := regexCompile(awsEventSourceRegex).SubexpIndex("eventSource")
+	if len(eventSourceRegexArray) > 0 && eventSourceRegex != 0 {
+		metadataMap["_type"] = fmt.Sprintf("%s",eventSourceRegexArray[eventSourceRegex])	
+	}
+	addCustomMetadataFromRawJson(metadataMap, message, defaultJsonMetadataKeys)
+	if strings.TrimSpace(lmTenantID) != "" {
+		metadataMap["_lm.tenantId"] = lmTenantID
+	}
+	if strings.TrimSpace(resourceType) != "" {
+		metadataMap["_resource.type"] = resourceType
+	}
+	return metadataMap
+}
+
+func extractMetadata(region string, arn string, eventsource string) map[string]interface{} {
+	var metadataMap = make(map[string]interface{})
+	metadataMap["_integration"] = "aws"
+	for _, str := range metadataArray {
+		if strings.TrimSpace(str) == "awsRegion" {
+			metadataMap["region"] = region
+
+		} else if strings.TrimSpace(str) == "arn" && arn != "" {
+			metadataMap["arn"] = arn
+		}
+	}
+	metadataMap["_type"] = eventsource
+	if strings.TrimSpace(lmTenantID) != "" {
+		metadataMap["_lm.tenantId"] = lmTenantID
+	}
+	if strings.TrimSpace(resourceType) != "" {
+		metadataMap["_resource.type"] = resourceType
+	}
+
+	return metadataMap
+}
+
+func addCustomMetadataFromRawJson(initialMap map[string]interface{}, rawMessage string, jsonKeys []string) {
+
+	if len(jsonKeys) < 1 {
+		return
+	}
+	if !json.Valid([]byte(rawMessage)) {
+		return
+	}
+	jsonQRead := goJsonQ.FromString(rawMessage)
+	for _, str := range jsonKeys {
+		val := jsonQRead.Find(str)
+		jsonQRead.Reset()
+		if val != nil {
+			initialMap[str] = val
+		}
+	}
+}
+
+func addCloudWatchEventMetadata(initialMap map[string]interface{}, logData *events.CloudwatchLogsData) {
+	if !addCloudWatchMetadata {
+		return
+	}
+	if len(logData.LogGroup) > 0 {
+		initialMap["logGroup"] = logData.LogGroup
+	}
+	if len(logData.LogStream) > 0 {
+		initialMap["logStream"] = logData.LogStream
+	}
+}
+
+func processResourceMapping(message string, accountId string) map[string]interface{} {
+	eventSourceArray := regexCompile(eventSourceRegex).FindStringSubmatch(message)
+	eventSource := eventSourceArray[2]
+	var lambdaMapping string
+	accountLevelLog := true
+	var resoureIDMap = make(map[string]interface{})
+	var resourceProperty string = "system.aws.arn"
+	var applicationId string
+	var jsonMap map[string]interface{}
+
+	if strings.Contains(eventSource, "firehose") {
+		deliveryStreamArray := regexCompile(kinesisFirehoseRegex).FindStringSubmatch(message)
+		if len(deliveryStreamArray) > 2 {
+			resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:firehose:%s:%s:deliverystream/%s", awsRegion, accountId, deliveryStreamArray[2])
+			accountLevelLog = false
+		}
+	} else if strings.Contains(eventSource, "kinesis") {
+		dataStreamArray := regexCompile(kinesisDataStreamRegex).FindStringSubmatch(message)
+		if len(dataStreamArray) > 2 {
+			resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:kinesis:%s:%s:stream/%s", awsRegion, accountId, dataStreamArray[2])
+			accountLevelLog = false
+		}
+	} else if strings.Contains(eventSource, "ecs") {
+		ecsStreamArray := regexCompile(ecsStreamRegex).FindStringSubmatch(message)
+		if len(ecsStreamArray) > 2 {
+			resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ecs:%s:%s:cluster/%s", awsRegion, accountId, ecsStreamArray[2])
+			accountLevelLog = false
+		}
+	} else if strings.Contains(eventSource, "s3") {
+		s3RegexArray := regexCompile(s3Regex).FindStringSubmatch(message)
+
+		s3Arn := regexCompile(s3Regex).SubexpIndex("arn")
+		s3Bucket := regexCompile(s3Regex).SubexpIndex("bucketName")
+
+		if len(s3RegexArray) > 0 {
+			if s3RegexArray[s3Bucket] != "" {
+				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:s3:::%s", s3RegexArray[s3Bucket])
+				accountLevelLog = false
+			} else if s3RegexArray[s3Arn] != "" {
+				resoureIDMap[resourceProperty] = fmt.Sprintf("%s",s3RegexArray[s3Arn])
+				accountLevelLog = false
+			}
+		}
+
+	} else if strings.Contains(eventSource, "lambda") {
+
+		lambdaRegexArray := regexCompile(lambdaRegex).FindStringSubmatch(message)
+		if len(lambdaRegexArray) > 0 {
+			lambdaFunctionName := regexCompile(lambdaRegex).SubexpIndex("functionName")
+			lambdaResourceName := regexCompile(lambdaRegex).SubexpIndex("resource")
+			lambdaFunctionWithVersion := regexCompile(lambdaRegex).SubexpIndex("functionVersion")
+
+			functionNameStr := fmt.Sprintf("%v", lambdaRegexArray[lambdaFunctionName])
+			resourceNameStr := fmt.Sprintf("%v", lambdaRegexArray[lambdaResourceName])
+			lambdaFunctionWithVersionStr := fmt.Sprintf("%v", lambdaRegexArray[lambdaFunctionWithVersion])
+
+			if functionNameStr != "" {
+				lambdaMapping = functionNameStr
+			} else if resourceNameStr != "" {
+				lambdaMapping = resourceNameStr
+			} else {
+				lambdaMapping = lambdaFunctionWithVersionStr
+			}
+			if lambdaMapping != "" {
+				accountLevelLog = false
+				if strings.Contains(lambdaMapping, "arn:aws:lambda") && !strings.Contains(lambdaMapping, ":$") {
+					resoureIDMap[resourceProperty] = lambdaMapping
+
+				} else if !strings.Contains(lambdaMapping, "arn:aws:lambda") {
+					resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s", awsRegion, accountId, lambdaMapping)
+
+				} else if strings.Contains(lambdaMapping, ":$") {
+					resoureIDMap[resourceProperty] = strings.Split(lambdaMapping, ":$")[0]
+				} else {
+					accountLevelLog = true
+				}
+			}
+		}
+
+	} else if strings.Contains(eventSource, "ec2") {
+		ec2RegexArray := regexCompile(ec2Regex).FindAllStringSubmatch(message, -1)
+		if len(ec2RegexArray) == 1 {
+			resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, accountId, ec2RegexArray[0][2])
+			accountLevelLog = false
+		}
+
+		if (len(ec2RegexArray) > 1) {
+			allInstanceIdsSame := true
+			firstElement := ec2RegexArray[0][0]
+			for _, match := range ec2RegexArray {
+				if match[0] != firstElement {
+					allInstanceIdsSame = false
+					break
+				}
+			}
+			if allInstanceIdsSame {
+			  log.Printf("All instanceIds in log are the same. Adding arn field.")
+				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", awsRegion, accountId, ec2RegexArray[0][2])
+				accountLevelLog = false
+			}
+		}
+	} else if strings.Contains(eventSource, "sqs") {
+		sqsRegexArray := regexCompile(sqsRegex).FindStringSubmatch(message)
+
+		sqsName := regexCompile(sqsRegex).SubexpIndex("queueName")
+		sqsUrl := regexCompile(sqsRegex).SubexpIndex("queueUrl")
+
+		if len(sqsRegexArray) > 0 {
+			if sqsRegexArray[sqsName] != "" {
+				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:sqs:%s:%s:%s", awsRegion, accountId, sqsRegexArray[sqsName])
+				accountLevelLog = false
+			} else if sqsRegexArray[sqsUrl] != "" {
+				subStr := strings.Split(sqsRegexArray[sqsUrl], "/")
+				resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:sqs:%s:%s:%s", awsRegion, accountId, subStr[len(subStr)-1])
+				accountLevelLog = false
+			}
+		}
+
+	}  else if strings.Contains(eventSource, "qbusiness") {
+    // Regex to match application ID from ARN-like values: application/<UUID>
+    qBusinessAppRegex := regexp.MustCompile(qbusinessApplicationIdRegex)
+
+    if err := json.Unmarshal([]byte(message), &jsonMap); err == nil {
+      if reqParams, ok := jsonMap["requestParameters"].(map[string]interface{}); ok {
+        // Priority 1: Direct applicationId field
+        if id, ok := reqParams["applicationId"].(string); ok && id != "" {
+          applicationId = id
+        }
+
+        // Priority 2: Scan all keys for value matching "application/<applicationId>"
+        if applicationId == "" {
+          for _, v := range reqParams {
+            if strVal, ok := v.(string); ok {
+              if match := qBusinessAppRegex.FindStringSubmatch(strVal); len(match) > 1 {
+                applicationId = match[1]
+                break
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if applicationId != "" {
+      resoureIDMap[resourceProperty] = fmt.Sprintf("arn:aws:qbusiness:%s:%s:application/%s", awsRegion, accountId, applicationId)
+      accountLevelLog = false
+    }
+  }
+
+	if accountLevelLog {
+		resoureIDMap["system.aws.accountid"] = accountId
+		resoureIDMap["system.cloud.category"] = "AWS/LMAccount"
+	}
+	return resoureIDMap
+}
+
+func parseCloudWatchEvents(request events.CloudWatchEvent) []model.LogInput {
+	lmBatch := make([]model.LogInput, 0)
+	var resoureIDMap = make(map[string]interface{})
+	var metadataMap map[string]interface{}
+	var event string
+	if strings.EqualFold(request.DetailType, "AWS API Call via CloudTrail") {
+		detailStr, err := json.Marshal(&request.Detail)
+		if err != nil {
+			panic(err)
+		}
+
+		event = string(detailStr)
+		metadataMap = extractMetadataForCloudTrail(event)
+		resoureIDMap = processResourceMapping(event, request.AccountID)
+
+	} else {
+		requestStr, err := json.Marshal(&request)
+		if err != nil {
+			panic(err)
+		}
+		event = string(requestStr)
+		// the other detail-types for cloudwatch events have different json format and hence processing it separately
+
+		cloudwatchResourceRegexArray := regexCompile(cloudwatchResourceRegex).FindStringSubmatch(event)
+		cloudwatchResource := regexCompile(cloudwatchResourceRegex).SubexpIndex("resources")
+		if len(cloudwatchResourceRegexArray) > 0 && cloudwatchResource != 0 {
+			resoureIDMap["system.aws.arn"] = fmt.Sprintf("%s",cloudwatchResourceRegexArray[cloudwatchResource])
+		}
+		metadataMap = extractMetadata(request.Region, fmt.Sprintf("%s",cloudwatchResourceRegexArray[cloudwatchResource]), request.Source)
+
+	}
+
+	lmEv := model.LogInput{
+		Message:    event,
+		ResourceID: resoureIDMap,
+		Timestamp:  request.Time.String(),
+		Metadata:   metadataMap,
+	}
+	lmBatch = append(lmBatch, lmEv)
+
+	if debug {
+		log.Printf("request generated to lm-logs api: %s\n", lmEv)
 	}
 
 	return lmBatch

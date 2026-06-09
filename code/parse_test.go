@@ -2,21 +2,23 @@ package main
 
 import (
 	"compress/gzip"
-	"fmt"
+	"encoding/json"
+	"log"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
-
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/logicmonitor/lm-data-sdk-go/model"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestParseELBlogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "elb.amazonaws.com"}
 
 	t.Run("parse elb log without prefix", func(t *testing.T) {
+
 		message := "2020-05-11T09:24:27.754579Z test 78.82.62.133:64107 172.40.0.85:80 0.00005 0.000852 0.000027 304 304 0 0 \"GET http://test-56808838.eu-west-1.elb.amazonaws.com:80/ HTTP/1.1\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36\" - -"
 		fileName := "AWSLogs/123123123123/elasticloadbalancing/us-west-1/2020/06/02/123123123123_elasticloadbalancing_us-west-1_test_20200511T0925Z_34.242.46.46_4jtxqo72.txt"
 		time, _ := time.Parse(time.RFC3339, "2020-04-08T15:08:34+02:00")
@@ -49,10 +51,11 @@ func TestParseELBlogs(t *testing.T) {
 		lmEvents, _ := parseELBlogs(s3Event, getContentsFromS3BucketMock)
 
 		//Assertion
-		expectedLMEvent := ingest.Log{
+		expectedLMEvent := model.LogInput{
 			Message:    message,
-			Timestamp:  time,
-			ResourceID: map[string]string{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+			Timestamp:  time.String(),
+			ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+			Metadata:   metadataMap,
 		}
 
 		assert.Equal(t, expectedLMEvent, lmEvents[0])
@@ -91,10 +94,11 @@ func TestParseELBlogs(t *testing.T) {
 		lmEvents, _ := parseELBlogs(s3Event, getContentsFromS3BucketMock)
 
 		//Assertion
-		expectedLMEvent := ingest.Log{
+		expectedLMEvent := model.LogInput{
 			Message:    message,
-			Timestamp:  time,
-			ResourceID: map[string]string{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+			Timestamp:  time.String(),
+			ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+			Metadata:   metadataMap,
 		}
 
 		assert.Equal(t, expectedLMEvent, lmEvents[0])
@@ -103,6 +107,8 @@ func TestParseELBlogs(t *testing.T) {
 
 func TestParseS3logs(t *testing.T) {
 	// Data preparation
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.aws"}
+
 	time, _ := time.Parse(time.RFC3339, "2020-04-08T13:08:34+00:00")
 	record := events.S3EventRecord{
 		S3: events.S3Entity{
@@ -113,7 +119,8 @@ func TestParseS3logs(t *testing.T) {
 				Key: "Key",
 			},
 		},
-		EventTime: time,
+		EventTime:   time,
+		EventSource: "s3.aws",
 	}
 
 	records := make([]events.S3EventRecord, 0)
@@ -134,16 +141,19 @@ func TestParseS3logs(t *testing.T) {
 
 	//Assertion
 
-	expectedlmEvent := ingest.Log{
+	expectedlmEvent := model.LogInput{
 		Message:    "a OriginBucket c",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::OriginBucket"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::OriginBucket"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedlmEvent, lmEvents[0])
 }
 
 func TestParseCloudWatchlogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "ec2.amazonaws.com"}
+
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAAE1Q22oCMRD9lZBnU5NMNpd9W1oV2lqQlVoQKdk1amBvZKNSpP/etKXQp4E5M+d2w60bR3t064/B4Rw/FOvifTkry2IxwxPcXzsX0lpKoQEgE8LwtG764yL05yEhU3sdp41tq72dNu0vVsbgbJtATyg7VFBnDIwTFVdVlS7GczXWwQ/R993cN9GFEedb3LTk0IerDXsXyHNi+XdGXp9eVpv7R7EqNnO8+1GZXVwXvz9v2O+TGGSgpGZSCK2l5mkYpoAplSlupDRGcQraUKMkVZQDaA5SMJkcRZ9aiLZNgVimJSS/TFBKJ3/tJPpiCAhpxCCnOgeB/ECY4kRQQgnnCu1PdeOToy3nnO1y9LZc56jsG1/7iPoOuXiiE+S7FPdiG6QYAG3HO/y5+/wC3OrpfYUBAAA=",
@@ -153,10 +163,11 @@ func TestParseCloudWatchlogs(t *testing.T) {
 	lmEvents := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1586351314000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "Apr  8 13:08:34 ip-172-40-0-227 dhclient[2221]: XMT: Solicit on eth0, interval 71330ms.",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::664833354492:instance/i-01fb3c5139e4b27bb"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::664833354492:instance/i-01fb3c5139e4b27bb"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, lmEvents[0])
@@ -182,6 +193,7 @@ func TestParseCloudWatchlogsEks(t *testing.T) {
 }
 
 func TestRDSLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "rds.amazonaws.com"}
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAALVSzY7aMBB+FctSpV0pwMSJQ2KEVNpSLqx6gKqHFVqZZEitTeLUNiC04t07G4T2AarePN+fZ8Z+4y16r2vcXnrkin9bbBcvT8vNZrFa8ojbc4eO4CxL8yRJZJoWguDG1itnjz0xE332E1f5iel80F2Jk0oHvdceR/Gktz7UDv2f5mbaBIe6JdeHZgxE+ePel870wdjuu2kCOs/VM1/rdl/pm+kloA+jZkD4bkhbnrAL78I3bioKTWQGEhIAKHIBcZpDMY2TOC9kAaIASGUihYRM5HI6lXlapELkpKIGgqE1BN3SRLEsMiKnWUpB0X09FC9AwAjyEaRMJCrNFB1+br8q9Vk9SzGVO7X+sVKMlb+xfO2t6QKjSBdMVyv2fgG/Rv/Wafz/Oi1t2zcYULGzswFZzPbHw4HegT3AGD49zhiwX4s1O5gGH/wj01WFVUSgw9ae7sfyUjZYzSjDBJzDOIaY+Yj5S1dSBbcq2KAbKhOQzM8Gcoj18zhije1qmu9DrU/oaKo7MGOVuf2zeSZlkrHXLxEjg2l1GCCZE8Svu+tfg3YiCdoCAAA=",
@@ -191,16 +203,19 @@ func TestRDSLogs(t *testing.T) {
 	lmEvents := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1596584764000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2020-08-04 23:46:04 UTC::@:[5275]:LOG:  checkpoint starting: time",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:rds::664833354492:db:database-1"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:rds::664833354492:db:database-1"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, lmEvents[0])
 }
 
 func TestRDSEnhancedLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "rds.amazonaws.com"}
+
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAAM1Z227bOBD9lYWeEy3vlPxmbJI2aLK5OOlitykKWaYdIrpFopwb8u87pGRbdtvsDdjyIYA4HA7PHM4c0shLkKumSRbq6qlSwSg4GF+Nv5weTibjd4fBXlA+FKoGsxAsopRyxmIC5qxcvKvLtoKZy4PJ2eRUmVqnTTczMbVKcpiaTffpeCzG14K8/yg+nL0nv4nja3n8qzhmF+DbtNMmrXVldFkc6cyouglGn4KTJJ/Oki7KF6Mas585S/DZhT9cqsJYx5dAz2AXygUSsYgJ5pIgKoUkjJOI45gzwUWMJEUcI4SJxJSgCMuIyIghAGA0JG+SHPLAPBZCYknAE+2tSIHwLzeBKha6UDfB6CY4/X1ycXIT7N0EuoCVRaqOD9zELDHJNGnUPtmavVRN2dYbr7cYcQvXkJw/QQTto2gf8StCR5yPCP7DuS2BK2ANnDCM2soucysQGhE0wtJ5FW3+8Zfz66Z3S6v22uhMPyemWwu5LVrYDj5RiCzs+n793Tw1RuVuGMHwIdGdH7F+s8xuF8uQ2u0bVdstQmETKE2SwYiE0gYxyo1QaAEUOlVd/FcYZWUyG0MiwPOpLlqjOkRlodYY5no5HMyNUsUmQK7ysn7qVj3U2qhpkt7ZaZi7bRfqHCI3R7VSu7bLZjnbtU3auuptaZLeKuvAKJRUtOWln200gpg1z7vYUDIRFUO3q54Ex2mRpKbLg8TQPtZW2YZLppmyR0OZtItnujY2GRJZjzypKodB4JhZwzoIJwxjMmAaIxxTB7PJkqmFTaSLOG3nc6gTG5NHhFnKTNLcNR1jTaZUpYuFPUfr/VzmU72iqm6LoptzpWDKHg0a7OtWTbMyveumbPzmIam68GsSh0sYinns1vXUbQy6WB902ZrNIRfKPJS1PdZPL9YLVGKepF2xK3OLXKHXj5YpzkJHg3l0NMY0pPz1s6O2uTs+60O4SvkwPZ9YLkNsCxiUZnZ81jgTVKot3GRd7xL3Hv0aFArrUNf3eT+2mFtorG7A7Orl4qJVrTpRm6xM5fowZOtwLn8LTy11n1E9a2Dkcupx2gJBURfzUt1PnsEQhSR2HlsQ3IJVGjgk9HVvJ10i17t/N11K/lm60ZvpkpDTt/Kda+iBXmi2csaCse2kCQmxGGZNQiJ30yYhle7Iq9unRqdJduD2+ruHj3fZcG0+YIP9JzZwv3rFRtfqAzoel7PFXx0+xqEU26cvol0eUNhVvuV38tT02YNQ246kEnTIhiiS/tZwe9rZI91pElyDA8u5gius6JuSOHV6XHliipF0opaXbWHOS+0cb4KfbS1P7b3YXWyrewHB3pStwm9C4zDirmJ7lAQu49j18/dhSk4p+yZQYIlvAxWcU/EtnFvwrJgijNhX8AiG1uhKqy5TeB6caHdxWl6XjQMjEI3JEO/Z5Kfe2SKwuyz0ShKrpIbA7l2A1nfZtd0ytUfUVYq9sVemnvp1gNptSiU8duyDIM903hWtI7GDRDCLCN7CBO+1fwuKiJDFO6hAz+TXqIhEyN2I34YF9UIiNkSVPzX32WwIh0Fi24jAgr8GhXknCztUrTD1YTpYmDNOt9mCYy7ct625/xciGWCM3sL446iLvYTFkZ+wsJ+wiEewBjXfPQw8wTWAxfyE9aaK/ThYwk9Y0k9YHsk85gNcPun8QCKET0I/xOWn0gtPlV74pPRDXH5KvfBT6oWfUi/8lPrIJ+kawPJJIgaw/OzEyM9OjPzsxMij180Qlk+Pmw2s2E+BiH162gzu6tjPVoz9bMXYz0sx9lMhYi8VIsJeXoqRVw+u9Y9Y+x/+t3F9fg3g709et82y8CAAAA==",
@@ -210,16 +225,19 @@ func TestRDSEnhancedLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1596671721000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"engine\":\"MYSQL\",\"instanceID\":\"database-2\",\"instanceResourceID\":\"db-3AA6AU62HV6KOH2W6IU7IN6I4Q\",\"timestamp\":\"2020-08-05T23:55:21Z\",\"version\":1,\"uptime\":\"00:20:17\",\"numVCPUs\":1,\"cpuUtilization\":{\"guest\":0.0,\"irq\":0.0,\"system\":0.8,\"wait\":0.2,\"idle\":97.3,\"user\":1.6,\"total\":2.7,\"steal\":0.1,\"nice\":0.0},\"loadAverageMinute\":{\"one\":0.0,\"five\":0.0,\"fifteen\":0.0},\"memory\":{\"writeback\":0,\"hugePagesFree\":0,\"hugePagesRsvd\":0,\"hugePagesSurp\":0,\"cached\":435728,\"hugePagesSize\":2048,\"free\":100836,\"hugePagesTotal\":0,\"inactive\":294920,\"pageTables\":3476,\"dirty\":280,\"mapped\":61940,\"active\":524112,\"total\":1019328,\"slab\":42776,\"buffers\":25824},\"tasks\":{\"sleeping\":96,\"zombie\":0,\"running\":0,\"stopped\":0,\"total\":96,\"blocked\":0},\"swap\":{\"cached\":0,\"total\":4095996,\"free\":4095996,\"in\":0.0,\"out\":0.0},\"network\":[{\"interface\":\"eth0\",\"rx\":654.28,\"tx\":2893.35}],\"diskIO\":[{\"writeKbPS\":5.13,\"readIOsPS\":0.17,\"await\":0.71,\"readKbPS\":0.67,\"rrqmPS\":0.0,\"util\":0.04,\"avgQueueLen\":0.0,\"tps\":1.4,\"readKb\":40,\"device\":\"rdsdev\",\"writeKb\":308,\"avgReqSz\":8.29,\"wrqmPS\":0.0,\"writeIOsPS\":1.23},{\"writeKbPS\":27.4,\"readIOsPS\":0.17,\"await\":0.32,\"readKbPS\":0.67,\"rrqmPS\":0.0,\"util\":0.08,\"avgQueueLen\":0.0,\"tps\":2.53,\"readKb\":40,\"device\":\"filesystem\",\"writeKb\":1644,\"avgReqSz\":22.16,\"wrqmPS\":2.27,\"writeIOsPS\":2.37}],\"physicalDeviceIO\":[{\"writeKbPS\":5.13,\"readIOsPS\":1.17,\"await\":0.48,\"readKbPS\":4.67,\"rrqmPS\":0.0,\"util\":0.08,\"avgQueueLen\":0.0,\"tps\":1.67,\"readKb\":280,\"device\":\"xvdg\",\"writeKb\":308,\"avgReqSz\":11.76,\"wrqmPS\":0.68,\"writeIOsPS\":0.5}],\"fileSys\":[{\"used\":379496,\"name\":\"\",\"usedFiles\":210,\"usedFilePercent\":0.02,\"maxFiles\":1310720,\"mountPoint\":\"/rdsdbdata\",\"total\":20496340,\"usedPercent\":1.85},{\"used\":2172928,\"name\":\"\",\"usedFiles\":75334,\"usedFilePercent\":11.5,\"maxFiles\":655360,\"mountPoint\":\"/\",\"total\":10190104,\"usedPercent\":21.32}],\"processList\":[{\"vss\":760392,\"name\":\"OS processes\",\"tgid\":0,\"parentID\":0,\"memoryUsedPc\":3.67,\"cpuUsedPc\":0.02,\"id\":0,\"rss\":37452,\"vmlimit\":0},{\"vss\":2148212,\"name\":\"RDS processes\",\"tgid\":0,\"parentID\":0,\"memoryUsedPc\":26.49,\"cpuUsedPc\":1.47,\"id\":0,\"rss\":270036,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4745,\"rss\":154532,\"vmlimit\":\"unlimited\"},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4748,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4749,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4750,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4751,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4752,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4753,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4754,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4755,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4756,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4757,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4758,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.15,\"id\":4759,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4760,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4761,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4762,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4763,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4764,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4765,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4766,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4767,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4780,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4782,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4784,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4785,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4786,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4788,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4789,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4790,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4791,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.02,\"id\":4795,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4796,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4797,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4798,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4799,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4814,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.0,\"id\":4867,\"rss\":154532,\"vmlimit\":0},{\"vss\":720284,\"name\":\"mysqld\",\"tgid\":4745,\"parentID\":4741,\"memoryUsedPc\":15.16,\"cpuUsedPc\":0.05,\"id\":5100,\"rss\":154532,\"vmlimit\":0}]}",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:rds::664833354492:db:database-2"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:rds::664833354492:db:database-2"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
 func TestLambdaLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "lambda.amazonaws.com"}
+
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "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",
@@ -229,16 +247,18 @@ func TestLambdaLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1598517709043*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "START RequestId: b8cf7efa-a997-4a31-a1ff-881feee2273e Version: $LATEST\n",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:lambda::197152445587:function:observatory-worker"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:lambda::197152445587:function:observatory-worker"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
 func TestEC2FlowLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "ec2.amazonaws.com"}
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAAL3RUUsjMRAA4L8S8ly3mcnMJPGtaE8OkRPaN5Fju6ayaHfL7mo5xP/ubEW04MPB0XubZIaZfJkXu8l9X97n5Z9ttqf2fLac/b6aLxazi7md2HbX5E6vIQVgJGKOQa8f2/uLrn3aamZa7vpprnDa5GHXdg8/myF367LK72WLocvlRutyU5+4AOuVphBdFOfBn5RVlbeDlvZPq77q6u1Qt82P+lF79Pb0xq73YVNusr3d95s/52YYUy+2vtO2XhxJAgdMCQlJILFEx8BBopCTSCDCTJQCMnrGyJAk6sihVvpQblQBAuJT8szOucnHl2h7fbOEVYCYGaG6W5MP5utfmG9ZhrEASAUiFOINuAI8FUHPZIi8IR4jMRCNSEzmc/xHSEBmdnY2v16aX5f2dfJv2nRc7YHvkP4uHc2qZeNFoyNrgzuyVkIRoFBmcof08bloENWKJsajQ+E/rvVAPRL3Vl2qob+A3r6+AaSOCSloBAAA",
@@ -248,16 +268,18 @@ func TestEC2FlowLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1616399355000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "i-067b718e521cdf437 197152445587 eni-071fbace220860313 52.119.221.63 10.134.7.224 443 45224 6 18 6689 1616399355 1616399414 ACCEPT OK",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-067b718e521cdf437"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-067b718e521cdf437"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
 func TestNATFlowLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "natGateway.amazonaws.com"}
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAAL2Wb2/aMBDGv4qV1zT4zr6z3XeoZWiapk2Cd1M1ZdStopWAknSoqvrdd4FSAdW2F3Mi/og4jn0/7rnz85ytYtMU93HxtInZZXY9WUy+f57O55PZNBtl620VaxmG4IDQWiLvZPhhfT+r148buTMuts24KtpZ0cZt8TSuYrtd1z8/Vm2s74pl3M+et3UsVjI9VuUFMGi6o+KiWC7jppUZzeOPZlmXm7ZcVx/KB3m0yS6/ZUV2s3t6+itWbTfynJW3sohh7YJnSxoMQgiBGdEY0jaANj44MoHlI5dA4LwJ5INxLDu1pfC2xUpClzCcd06W0lqPDv+DLI/qGFcdh6xA52BsDjmwOVxQDl4rMB4VsWZQrEBZGXnb4PBT5qjJ1dX060J9+ZS9jP6Px/XLg2CDMs4DDwXk0wFhjgZOgSw565W1RnCYFUo40DtSSJkjRDxDAnL4igROYZCvnom8Tkf0KrRjvI5lT9VpjrB3HOgJZy/AHQ450oIjAMFy70CYAIgkegg5uJzsmeIEyGjkwfJjUufnhG2PMmwB2TQJkjebvBPUeX7YGLc7hFCZgNQ7EPUOhKTdcBXUr0/ogEC2sQOdqj6hTfhLh8MBBZfQJ0Aewikdy6GtyAY/WIISeoSzBLFEjNKwnRRQ199Aud7LJyQxCOxFXZR7zs07XyqC09bCYEAJLcIf+oFFdkPJLaQwCOcn6lvvlurhoU12SOgR3veD7tWJTYRn/01y8/Ibd82p5VIPAAA=",
@@ -267,16 +289,19 @@ func TestNATFlowLogs(t *testing.T) {
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1617877079000*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2 197152445587 eni-16105f5a 10.134.1.163 10.134.5.180 1382 56061 6 1 40 1617877079 1617877138 ACCEPT OK",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-16105f5a"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.networkInterfaceId": "eni-16105f5a"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
 func TestParseCloudfrontlogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "cloudFront.amazonaws.com"}
+
 	// Data preparation
 	time, _ := time.Parse(time.RFC3339, "2020-04-08T13:08:34+00:00")
 	record := events.S3EventRecord{
@@ -288,7 +313,8 @@ func TestParseCloudfrontlogs(t *testing.T) {
 				Key: "Key",
 			},
 		},
-		EventTime: time,
+		EventTime:   time,
+		EventSource: "cloudFront.amazonaws.com",
 	}
 
 	records := make([]events.S3EventRecord, 0)
@@ -306,7 +332,7 @@ func TestParseCloudfrontlogs(t *testing.T) {
 	w := gzip.NewWriter(f)
 	_, err := w.Write([]byte(logMsg))
 	if err != nil {
-		fmt.Println("Error in writing log in file")
+		log.Println("Error in writing log in file")
 	}
 	w.Close()
 
@@ -315,7 +341,7 @@ func TestParseCloudfrontlogs(t *testing.T) {
 	result := make([]byte, 100)
 	_, err = f.Read(result)
 	if err != nil {
-		fmt.Println("Error in reading from file")
+		log.Println("Error in reading from file")
 	}
 	defer f.Close()
 
@@ -327,10 +353,11 @@ func TestParseCloudfrontlogs(t *testing.T) {
 
 	lmEvents := parseS3logs(s3Event, getContentsFromS3BucketMock)
 
-	expectedlmEvent := ingest.Log{
+	expectedlmEvent := model.LogInput{
 		Message:    "Test the Cloudfront logs",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:s3:::CloudfrontLogBucket"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::CloudfrontLogBucket"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedlmEvent, lmEvents[0])
@@ -343,13 +370,16 @@ func TestParseCloudtrailLogs(t *testing.T) {
 		},
 	}
 
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "ec2.amazonaws.com"}
+
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	time := time.Unix(0, 1618555235714*1000000)
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/LogicMonitor_119/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJVBZZRIN7\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4\",\"arn\":\"arn:aws:iam::197152445587:role/LogicMonitor_119\",\"accountId\":\"197152445587\",\"userName\":\"LogicMonitor_119\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-16T06:03:12Z\"}}},\"eventTime\":\"2021-04-16T06:27:05Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"DescribeInstanceStatus\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.221.10.3\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"errorCode\":\"Client.RequestLimitExceeded\",\"errorMessage\":\"Request limit exceeded.\",\"requestParameters\":{\"instancesSet\":{\"items\":[{\"instanceId\":\"i-0d345eec77c8a08b1\"}]},\"filterSet\":{},\"includeAllInstances\":false},\"responseElements\":null,\"requestID\":\"23b2ea29-b7b1-449f-a584-035f485f05cf\",\"eventID\":\"703a3ad3-3d3d-4bd1-8637-3692f850e857\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.accountid": "197152445587", "system.cloud.category": "AWS/LMAccount"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::197152445587:instance/i-0d345eec77c8a08b1"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -374,6 +404,7 @@ func TestParseCloudtrailLogsS3(t *testing.T) {
 }
 
 func TestElbGzipLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "elb.amazonaws.com"}
 	message := "2020-05-11T09:24:27.754579Z test 78.82.62.133:64107 172.40.0.85:80 0.00005 0.000852 0.000027 304 304 0 0 \"GET http://test-56808838.eu-west-1.elb.amazonaws.com:80/ HTTP/1.1\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36\" - -"
 	fileName := "AWSLogs/123123123123/elasticloadbalancing/us-west-1/2020/06/02/123123123123_elasticloadbalancing_us-west-1_test_20200511T0925Z_34.242.46.46_4jtxqo72.gz"
 	time, _ := time.Parse(time.RFC3339, "2020-04-08T15:08:34+02:00")
@@ -404,7 +435,7 @@ func TestElbGzipLogs(t *testing.T) {
 	w := gzip.NewWriter(f)
 	_, err := w.Write([]byte(logMsg))
 	if err != nil {
-		fmt.Println("Error in writing log in file")
+		log.Println("Error in writing log in file")
 	}
 	w.Close()
 
@@ -413,7 +444,7 @@ func TestElbGzipLogs(t *testing.T) {
 	result := make([]byte, 512)
 	_, err = f.Read(result)
 	if err != nil {
-		fmt.Println("Error in reading from file")
+		log.Println("Error in reading from file")
 	}
 	defer f.Close()
 
@@ -427,22 +458,25 @@ func TestElbGzipLogs(t *testing.T) {
 	lmEvents, _ := parseELBlogs(s3Event, getContentsFromS3BucketMock)
 
 	//Assertion
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    message,
-		Timestamp:  time,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+		Timestamp:  time.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:elasticloadbalancing:us-west-1:123123123123:loadbalancer/test"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, lmEvents[0])
 }
 
-//Test case for AWS kinesis logs from cloudtrail
+// Test case for AWS kinesis logs from cloudtrail
 func TestParseKinesisFirehoseLogs(t *testing.T) {
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "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",
 		},
 	}
+
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "firehose.amazonaws.com"}
 
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
@@ -452,16 +486,18 @@ func TestParseKinesisFirehoseLogs(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 26, 5, 45, 15, 228000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/LogicMonitor_119/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJ5UWDCK2J\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJZC36CRUZ4\",\"arn\":\"arn:aws:iam::197152445587:role/LogicMonitor_119\",\"accountId\":\"197152445587\",\"userName\":\"LogicMonitor_119\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-26T05:23:11Z\"}}},\"eventTime\":\"2021-04-26T05:30:50Z\",\"eventSource\":\"firehose.amazonaws.com\",\"eventName\":\"DescribeDeliveryStream\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.214.159.46\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"errorCode\":\"ResourceNotFoundException\",\"errorMessage\":\"Firehose firehosedelievery under account 197152445587 not found.\",\"requestParameters\":{\"deliveryStreamName\":\"firehosedelievery\"},\"responseElements\":null,\"requestID\":\"dd1d624c-66ab-9056-841d-300639f2b022\",\"eventID\":\"f25e9886-5059-4b07-90d1-d29a965c0a0f\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/firehosedelievery"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/firehosedelievery"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[4])
 }
 
 func TestKinesisFirehoseErrorLog(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "firehose.amazonaws.com"}
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAADWPQW7CMBBFrxJ5jZTYHtsxu0gNbNpVsqtQ5RITrJI48piiCnH3Di0s/fxm5v8rmzyiG33/s3i2Zi9N33y8tV3XbFu2YvEy+0SYW8OVAFCqNoRPcdymeF7op3QXLL/C7DHgISR/jOjLwWW3eTz+9S4n7ybyBySA50/cp7DkEOdNOGWfkK3fmduz3Z/dfvs539GVhYGGpOYcVAWmri1UWlAUIQ0IS7kMKC2VEbbWQmqj7shaY4WGik7lQAWzmygr19yCrKCSgtvVszit78koXuNYHGIqHl2KZxl2291+AT15qVomAQAA",
@@ -476,10 +512,11 @@ func TestKinesisFirehoseErrorLog(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 26, 9, 46, 43, 219000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "Test Log for kinesis firehose",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/dataFirehose"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:firehose::197152445587:deliverystream/dataFirehose"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
@@ -492,6 +529,8 @@ func TestKinesisDataStreamLog(t *testing.T) {
 		},
 	}
 
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "kinesis.amazonaws.com"}
+
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	localTime := time.Local
@@ -500,10 +539,11 @@ func TestKinesisDataStreamLog(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 27, 8, 55, 50, 324000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/BhushanPuriPortal/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJV4QL3KY6\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJTJMESL5PU\",\"arn\":\"arn:aws:iam::197152445587:role/BhushanPuriPortal\",\"accountId\":\"197152445587\",\"userName\":\"BhushanPuriPortal\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-27T08:34:28Z\"}}},\"eventTime\":\"2021-04-27T08:39:15Z\",\"eventSource\":\"kinesis.amazonaws.com\",\"eventName\":\"ListTagsForStream\",\"awsRegion\":\"ap-northeast-1\",\"sourceIPAddress\":\"34.220.47.95\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"requestParameters\":{\"streamName\":\"kinesisTestSream\"},\"responseElements\":null,\"requestID\":\"f85f8e09-9fda-a448-a15e-41fa3263205e\",\"eventID\":\"d815bd8e-1016-46a6-8f68-608a42b9b7d3\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:kinesis::197152445587:stream/kinesisTestSream"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:kinesis::197152445587:stream/kinesisTestSream"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[1])
@@ -515,7 +555,7 @@ func TestECSLog(t *testing.T) {
 			Data: "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",
 		},
 	}
-
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "ecs.amazonaws.com"}
 	logs := parseCloudWatchLogs(cloudWatchEvent)
 
 	localTime := time.Local
@@ -524,16 +564,19 @@ func TestECSLog(t *testing.T) {
 		timeValue = time.Date(2021, time.April, 30, 8, 47, 41, 663000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAS3ZZTSSJQUWVOXM6Y:LMAssumeRoleSession\",\"arn\":\"arn:aws:sts::197152445587:assumed-role/lmngstockholm/LMAssumeRoleSession\",\"accountId\":\"197152445587\",\"accessKeyId\":\"ASIAS3ZZTSSJ57ASTCJ6\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAS3ZZTSSJQUWVOXM6Y\",\"arn\":\"arn:aws:iam::197152445587:role/lmngstockholm\",\"accountId\":\"197152445587\",\"userName\":\"lmngstockholm\"},\"webIdFederationData\":{},\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2021-04-30T08:30:58Z\"}}},\"eventTime\":\"2021-04-30T08:39:02Z\",\"eventSource\":\"ecs.amazonaws.com\",\"eventName\":\"ListTagsForResource\",\"awsRegion\":\"us-west-1\",\"sourceIPAddress\":\"34.219.122.65\",\"userAgent\":\"aws-sdk-java/1.11.918 Linux/4.14.193-149.317.amzn2.x86_64 OpenJDK_64-Bit_Server_VM/11.0.3+7-LTS java/11.0.3 vendor/Amazon.com_Inc.\",\"requestParameters\":{\"resourceArn\":\"arn:aws:ecs:us-west-1:197152445587:cluster/CVTestCluster\"},\"responseElements\":{\"tags\":[{\"key\":\"testKey\",\"value\":\"testValue\"}]},\"requestID\":\"ad778dc0-1c40-4599-a1d6-5bbbee2d17c2\",\"eventID\":\"f53bf60c-3b8b-4304-9a80-cacd7b02a275\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"eventCategory\":\"Management\",\"recipientAccountId\":\"197152445587\"}",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.arn": "arn:aws:ecs::197152445587:cluster/CVTestCluster"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ecs::197152445587:cluster/CVTestCluster"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[44])
 }
 
 func TestELBlowLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "networkInterfaceId.amazonaws.com"}
+
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAAK2QT2sCMRDFv0rI2T+TZJLselvsVkopLeitSInrVJbq7rIbK0X87h2VUsFCD+0hTPIyefN+2csNdV1Y0eyjITmSN9kse3nIp9NsksuerHcVtSyr1CurEa1NPMvrejVp623DN8Ow64a0Xgwriru6fburIrWvoaBz2zS2FDbcR1XZh8KBNgtXLCnx4Cj0Q1FQE7m12y66oi2bWNbVbblmj06OnmWQ85NN/k5VPCp7WS7ZzTiVeK+tA6VTo3zKudBodCk4MAa9TzC1YDAxFhAQ8Vgd8qRYMnEMGw6vnNZeGW8SAOh9/QTba3EJLH7MLvj1QCEvbbkmQsFAGRzwQYOwimWhtEqdcEIJRPE97XKbjcf500w83stD729w9l/hLmGuSE9YZ8QTHPwONz98As9B+hNrAgAA",
@@ -548,16 +591,19 @@ func TestELBlowLogs(t *testing.T) {
 		timeValue = time.Date(2021, time.June, 03, 9, 48, 58, 000000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2 197152445587 eni-0c6023b6cde8706ea 162.142.125.148 10.134.5.120 51125 12196 6 1 44 1622713738 1622713738 ACCEPT OK",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-0c6023b6cde8706ea"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.networkInterfaceId": "eni-0c6023b6cde8706ea"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
 func TestRDSFlowLogs(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "rds.amazonaws.com"}
+
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAAG2Qy2rDMBBFf8VoHWO9LGmyM9QNXbRdOLsSiiLLwTR+ICk1JeTfO2kJbaEzm+HO5czjTAYfoz347cfsyZrcVdvq9bFummpTkxWZltEHlJk0RoLSwKhG+TgdNmE6zdgp7BKL0MZi9GmZwtvDmHzorPPftiYFbwf0+bHPKTjlulYp7oTpWtnm1jk/J7TG0z660M+pn8b7/oiMSNYvxJLdF6Z+92O6KmfSt0gTihsGXHKGMKpZKTiDUgKlnDHQknIhQVAqFIDkoI00TJTK4KTU48XJDrg8U1yB0LqkGKvbJxDPs98HZ//unuV/8od1Kw0F1J+ery8ll93lE2T4ipxrAQAA",
@@ -572,35 +618,388 @@ func TestRDSFlowLogs(t *testing.T) {
 		timeValue = time.Date(2021, time.July, 22, 07, 9, 10, 000000000, time.Local)
 	}
 
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "2 148849679107 eni-09c6cfd662c38fd4d - - - - - - - 1626937750 1626937809 - NODATA",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.networkInterfaceId": "eni-09c6cfd662c38fd4d"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.networkInterfaceId": "eni-09c6cfd662c38fd4d"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
 }
 
 func TestFargateLog(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "fargate.amazonaws.com"}
 	cloudWatchEvent := events.CloudwatchLogsEvent{
 		AWSLogs: events.CloudwatchLogsRawData{
 			Data: "H4sIAAAAAAAAAH3SS2/bMAwA4L8S+Nyk4ksUcyu2pqed0p2GopBjuTCaF2ynxVD0v4/JMGDdksIXixTET6Teqk0ZhvxU7n/uSzWvvt7c3zx+u10ub+5uq6tq97otvYeBU2KLahDUw+vd012/O+w9c51fh+s29095LL8zy7EveeOptt9tpu36ULbjtO7G6fOhLrOX3M9802y1246589MH/z1sx9I/NqXNh/X4eFpP21YlNyVrxiZKSzVLHepmldu2ZiyQAVMgjK2J1ivQhoiaOgOrNGw1H6s4aDjUw6rv9mO32y66tdcZqvmPKlcPJ+zti+uOkbeqa9xMMaZEaoRECsEXkgxO1xdRQ9BggckAlRFVIxCnGJJXGjtv5Zg33hWILBApoRLD1Z8W+/GCYT5Z9N1kUeoJpEmQueg86OT7/ZcJBsTq/epfCUs0PhICRg7Ry2JgDyEnEwLExMEEWZUloFyQJGL8KIFzkvSZJKYACjEoR4qmJpYEOEZNKUVvGBpZPN3ZP8YLEr8RfZTgOYl9JrFAoBbEmC0EBp+Hp5BMQRwDUYRjUjgOjZnOSyj8J6EzEgifSBiOQzGBUwv8KaI/FxKL4hOz48iiEEUMvof8oVyQ+CvijxI+J4G/JA/vvwBKpFa1vAMAAA==",
 		},
 	}
-
 	logs := parseCloudWatchLogs(cloudWatchEvent)
-
 	localTime := time.Local
 	timeValue := time.Date(2022, time.February, 18, 11, 27, 07, 341000000, time.Local)
 	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
 		timeValue = time.Date(2022, time.February, 18, 5, 57, 07, 341000000, time.Local)
 	}
-
-	expectedLMEvent := ingest.Log{
+	expectedLMEvent := model.LogInput{
 		Message:    "520: Fri Feb 18 05:57:07 UTC 2022",
-		Timestamp:  timeValue,
-		ResourceID: map[string]string{"system.aws.accountid": "148849679107", "system.cloud.category": "AWS/LMAccount"},
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.accountid": "148849679107", "system.cloud.category": "AWS/LMAccount"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestEKSLog(t *testing.T) {
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "eks.amazonaws.com"}
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/+3YW2/bNhQA4L8i8CUvlszDOwUUWIAlxYBtKJY8LQ4CSqRsIrIoiFTcLsh/L6w0bZA1D0m9tQX0SPqQPIfip4tv0dbFaNbu/EPvUIl+PT4/vvrj5Ozs+O0JWqCw69yASkQUZoxyjBXBaIHasH47hLFHJVqaXVzWoUvGd27wXfTrTYrLGx83ps3bsM7ddVyavm99bZIP3f3wszQ4s0Ul8n0OkuQUcopzILgYY75zMeWkqMO2H5MrfJfc0Jk2fzRLcWOGog3r4vPSsWja0XUpr3zKN93OVldma/4JXV63YbQ7k+rN1aMQJRtJOTBpq0YoapjjRgopdKWtttbWVivXSCMMmEqBrmqjK2pYY62usGP71dECxbGK9eD7fVKnvk1uiKi8QMnFlFJCl1O1JzeuS/v+W+QtKhFVTEimBdFMcaVAMKw05lgzSinDQDgRknGmsVKSS0JAcqIoQQuU/NbFZLY9KkESphkBDRzD4uFCohLdrqawFSpXiGDCcqxyos+BlVSUFAqOQQutpP57hRYrFKdrMUXHZN0wTL1X/dRzOjXasJ5aF/vpllgtic4eprvMLtwwhOEyuwhj6sdUPtrwNqzj03aBL7N3Y/r9YV+y43e/ZYOLfeiss9nOp002zfjm6C8XwzjU7s+QTsPY2ZP3tZu2+miRfar3zdH5xmWxd7VvvLNZG9bZfUWZDS5mXUiZe+9jKo6mUq7Hyg2dSy6uUHm7Qn2wV535tFtPj9A0Yv9r7E3tvsT962RNgfupvJ0CBDW1aqzORUUgZ9iRXFOpcsJpo3AtAbSdxmxCTNOIF0CYBn4++F/Lfoqwob52w0NG33renyy6MXFzXykmDAMwyjgp7PVQuHp4lPv9Tpld3Fex3N8LQhXdcGMq3/r0YX/7yJsw5F9y/yVuDOGixEZWGhuloRYNa5RTFVQGwGnVEFEBpoJDg1ltDQdHZaWwUgJkxcCQqqmfJOy3Zu3+m4xLUlBSkGKPAwsiV+juDt0tvoJdAYAEzvbJE6a54IxIpagmioCkEkBJIiWlhOnnsZOXYScYA8jvZ/3U+NbZLIUsuu4eqJvgzx5njz+LR44P6ZErzWeQM8gZ5OtBwiFBaqzYDwNyxjhj/N4YKSimpcCCgqZMcs6UoIxoAIYZ5VxQDppTLrDWVGrxDEbCxQs+TUnBBVBNODvI05HMn6Yz9hn7wbHLw2FnDFN+kCfv67DPr8IzyJ8fpDokSI7FDHIGOYP8BpDP/Xn7KpCKYvhhQM4YZ4z/N8bLu488sRq3px4AAA==",
+		},
+	}
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	localTime := time.Local
+	timeValue := time.Date(2024, time.August, 29, 20, 06, 31, 501000000, time.Local)
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
+		timeValue = time.Date(2024, time.August, 29, 14, 36, 31, 501000000, time.Local)
+	}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"time\":\"2024-08-29T14:36:31.501969879Z\",\"stream\":\"stderr\",\"_p\":\"F\",\"log\":\"[2024/08/29 14:36:31] [error] [output:cloudwatch_logs:cloudwatch_logs.0] PutLogEvents API responded with error='ResourceNotFoundException', message='The specified log stream does not exist.'\",\"kubernetes\":{\"pod_name\":\"fluent-bit-hnwdb\",\"namespace_name\":\"amazon-cloudwatch\",\"pod_id\":\"63ac8fd9-6b21-40e2-9378-253f80c7119d\",\"host\":\"ip-172-31-30-120.us-west-2.compute.internal\",\"container_name\":\"fluent-bit\",\"docker_id\":\"87f735147dbf683a4e5a76769b9d9dddcd98ef7a6a1ab819bca9b3a4fdd9b0e4\",\"container_hash\":\"602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/observability/aws-for-fluent-bit@sha256:0a7b90a891c6f4f8e8b1ba11e98f26b103651f04cda51e37b8088617b41a2bfc\",\"container_image\":\"602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/observability/aws-for-fluent-bit:2.32.2.20240627\"}}",
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.accountid": "280443500820", "system.cloud.category": "AWS/LMAccount"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestParseCloudtrailLogsS3(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "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",
+		},
+	}
+
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.amazonaws.com"}
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"cloudtrail.amazonaws.com\"},\"eventTime\":\"2023-03-03T07:30:04Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"GetBucketAcl\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"cloudtrail.amazonaws.com\",\"userAgent\":\"cloudtrail.amazonaws.com\",\"requestParameters\":{\"bucketName\":\"aws-cloudtrail-logs-700010466334-8d075b05\",\"Host\":\"aws-cloudtrail-logs-700010466334-8d075b05.s3.us-east-1.amazonaws.com\",\"acl\":\"\"},\"responseElements\":null,\"additionalEventData\":{\"SignatureVersion\":\"SigV4\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"bytesTransferredIn\":0,\"AuthenticationMethod\":\"AuthHeader\",\"x-amz-id-2\":\"La8vQCxEf9pcqy/H8Y7Rs7aULfw0Qkc0EI+uKOFTyuMu8of/2a/yvPO6hKck3V5YaGneBCVwzkw=\",\"bytesTransferredOut\":568},\"requestID\":\"TAQNDGTZC32834P4\",\"eventID\":\"2514d9c5-5365-4b24-ac86-241dea825ad6\",\"readOnly\":true,\"resources\":[{\"accountId\":\"700010466334\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"700010466334\",\"sharedEventID\":\"59523b9c-953d-4110-b4d5-b8209621af88\",\"eventCategory\":\"Management\"}",
+		Timestamp:  time.Date(2023, time.March, 3, 7, 30, 27, 87000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05"},
+		Metadata:   metadataMap,
 	}
 
 	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestParseCloudtrailLogsLambda(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAAAO1W227bRhD9F6JPhdbZO3f5xtpyYMBJg0hogUaGMNxdqkQpUiUpG47hf++QlBTZadIAcR8CCCBAcOfM7czskR6idWhbWIX5/SZESXSRztPlm+lslr6eRpOovqtCg8fcUCmFotRwisdlvXrd1NsNWl7BXfvKlfXWdw0U5WicdU2A9TO/5XmPmveo5bYlAdqOsKVEj3abta4pNl1RV5dF2YWmjZIP0S5qAeWyhGztYdkDo5shxfQ2VF0Pe4gKj5lELLmOpTGMcqm5EpZTFhsrtdZGCM0lfnLJqbUqZpzHylKtdN9NVyAHHayxHaZjw2MhNeXCTvbcYPiHRRT6jL9hbVjlIkoWETujZhFNFtG2Dc2VR2vR3aMFsR2yOWDS32ez0NwWLgzIorqt/wr+l/vBiG20Z7CGj3WFLJ65er2IHie7THOsakBxrIVQfMyc0UTZhLI/hmADbFZvGzcCS1hnHp4H3APfwi7e1VDDYEDQ+7Da93MYymBrh8BX71LvG6ThiwXv+k9XmONroCb8vUWa30GDhfQjHpnKt5Xr534oD5oqQb9k7CY5FJUc71Kyd0uu31xjvsu6uYPGh+bAsoPePN/PYViXo77SpnqaDYN8KRfayKpf9+TZsic/H0d0rt7uKDh2H0eKFG7qqg3TMqz7xUVYtS3LfgbeF32pUA41XkAHT5k5XrnvIyf56TqdT2fzfUnDQK4uhsh54ILTmBJ8A5GgGMlCLglkTINVIc6M+7RMOyePN8tBTok01hOpLSfAjSZKecd1iLVTsBs++F+rsl/7HMo2jIwMvPVUfMB2YeTvyv8Lg5OnNypJrsf+k8tdpwMkff/2RTbo8eZwBw9J79p0U5xDWQ6Z1lChLPSD3O3VUVeu2BR4ln69nfZPaIKfHnGpPfM8t4544WMireDEOgZEcaUUGCmspZ8GcA5dWNXNqCPjzjziVL9PDNmPJYYMlTDh8UkMT2L4wmIIUsiMgiI2Y3gXKbPEWEqJ9tZncaBZsPxzMbTC61woQplHBRWZIUZLSix3woAGShU7ieG3iWGQmeDgBQGhGZFK4Q+LCJTElFrAL0H1/y2G/IcTQ5EwcxLDkxi+sBhy77V2sSeGcUski2MCNJYkMEc1eJcbDp+JofKZNbkIRHmESgiBmDjkuKqUO68soCSexPDbxFABBAU0JxZ5J5Ljv+yM4bU3sUI/a5yh9r/E8ObxH0p2zy7qDwAA",
+		},
+	}
+
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "lambda.amazonaws.com"}
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"logs.amazonaws.com\"},\"eventTime\":\"2023-03-08T10:59:01Z\",\"eventSource\":\"lambda.amazonaws.com\",\"eventName\":\"Invoke\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceArn\":\"arn:aws:logs:us-east-1:280443500820:log-group:/aws/cloudtrail:*\",\"sourceAccount\":\"280443500820\"},\"responseElements\":null,\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder:$LATEST\"},\"requestID\":\"fe232070-e23a-4a51-bef4-ab16a95e7b8c\",\"eventID\":\"d833caf0-489d-4692-a286-55dc26e76c5a\",\"readOnly\":false,\"resources\":[{\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\",\"ARN\":\"arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":false,\"recipientAccountId\":\"280443500820\",\"sharedEventID\":\"6d1d2f9c-d3d7-4932-9c1a-52555a843990\",\"eventCategory\":\"Data\"}",
+		Timestamp:  time.Date(2023, time.March, 8, 11, 4, 20, 239000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:lambda:us-east-1:280443500820:function:LMLogsForwarder"},
+		Metadata:   metadataMap,
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudTrailLogsEC2(t *testing.T) {
+	var s = "{\"owner\":\"123456678\",\"logGroup\":\"/aws/cloudtrail\",\"logStream\":\"123456678_CloudTrail_us-west-2_3\",\"subscriptionFilters\":[\"testsubslambda\"],\"messageType\":\"DATA_MESSAGE\",\"logEvents\":[{\"id\":\"\",\"timestamp\":123456789,\"message\":\"{\\\"eventVersion\\\":\\\"1.08\\\",\\\"userIdentity\\\":{\\\"type\\\":\\\"AssumedRole\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\\\",\\\"arn\\\":\\\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"accessKeyId\\\":\\\"ASIAUCS54HEKDHXBQTVJ\\\",\\\"sessionContext\\\":{\\\"sessionIssuer\\\":{\\\"type\\\":\\\"Role\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N\\\",\\\"arn\\\":\\\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"userName\\\":\\\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\"},\\\"webIdFederationData\\\":{},\\\"attributes\\\":{\\\"creationDate\\\":\\\"2023-05-23T05:07:33Z\\\",\\\"mfaAuthenticated\\\":\\\"false\\\"}}},\\\"eventTime\\\":\\\"2023-05-23T05:36:11Z\\\",\\\"eventSource\\\":\\\"ec2.amazonaws.com\\\",\\\"eventName\\\":\\\"DescribeInstanceAttribute\\\",\\\"awsRegion\\\":\\\"us-west-2\\\",\\\"sourceIPAddress\\\":\\\"49.207.217.191\\\",\\\"userAgent\\\":\\\"AWSInternal\\\",\\\"requestParameters\\\":{\\\"instanceId\\\":\\\"i-0d51cd459226160ac\\\",\\\"attribute\\\":\\\"disableApiTermination\\\"},\\\"responseElements\\\":null,\\\"requestID\\\":\\\"468e0670-30d9-4ef7-ab75-648c03d63371\\\",\\\"eventID\\\":\\\"78294249-5828-4dde-8b53-49f81d715b95\\\",\\\"readOnly\\\":true,\\\"eventType\\\":\\\"AwsApiCall\\\",\\\"managementEvent\\\":true,\\\"recipientAccountId\\\":\\\"123456678\\\",\\\"eventCategory\\\":\\\"Management\\\",\\\"sessionCredentialFromConsole\\\":\\\"true\\\"}\"}]}"
+	var data events.CloudwatchLogsData
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudTrailLogs(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "ec2.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\",\"arn\":\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\",\"accountId\":\"123456678\",\"accessKeyId\":\"ASIAUCS54HEKDHXBQTVJ\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAUCS54HEKDKHAECU5N\",\"arn\":\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\",\"accountId\":\"123456678\",\"userName\":\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\"},\"webIdFederationData\":{},\"attributes\":{\"creationDate\":\"2023-05-23T05:07:33Z\",\"mfaAuthenticated\":\"false\"}}},\"eventTime\":\"2023-05-23T05:36:11Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"DescribeInstanceAttribute\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"49.207.217.191\",\"userAgent\":\"AWSInternal\",\"requestParameters\":{\"instanceId\":\"i-0d51cd459226160ac\",\"attribute\":\"disableApiTermination\"},\"responseElements\":null,\"requestID\":\"468e0670-30d9-4ef7-ab75-648c03d63371\",\"eventID\":\"78294249-5828-4dde-8b53-49f81d715b95\",\"readOnly\":true,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456678\",\"eventCategory\":\"Management\",\"sessionCredentialFromConsole\":\"true\"}",
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2::123456678:instance/i-0d51cd459226160ac"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudTrailLogsSQS(t *testing.T) {
+	var s = "{\"owner\":\"123456678\",\"logGroup\":\"/aws/cloudtrail\",\"logStream\":\"123456678_CloudTrail_us-west-2_3\",\"subscriptionFilters\":[\"testsubslambda\"],\"messageType\":\"DATA_MESSAGE\",\"logEvents\":[{\"id\":\"\",\"timestamp\":123456789,\"message\":\"{\\\"eventVersion\\\":\\\"1.08\\\",\\\"userIdentity\\\":{\\\"type\\\":\\\"AssumedRole\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\\\",\\\"arn\\\":\\\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"accessKeyId\\\":\\\"ASIAUCS54HEKPPHDNOGC\\\",\\\"sessionContext\\\":{\\\"sessionIssuer\\\":{\\\"type\\\":\\\"Role\\\",\\\"principalId\\\":\\\"AROAUCS54HEKDKHAECU5N\\\",\\\"arn\\\":\\\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\",\\\"accountId\\\":\\\"123456678\\\",\\\"userName\\\":\\\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\\\"},\\\"webIdFederationData\\\":{},\\\"attributes\\\":{\\\"creationDate\\\":\\\"2023-05-03T08:34:17Z\\\",\\\"mfaAuthenticated\\\":\\\"false\\\"}}},\\\"eventTime\\\":\\\"2023-05-03T09:16:01Z\\\",\\\"eventSource\\\":\\\"sqs.amazonaws.com\\\",\\\"eventName\\\":\\\"CreateQueue\\\",\\\"awsRegion\\\":\\\"us-west-2\\\",\\\"sourceIPAddress\\\":\\\"49.207.235.15\\\",\\\"userAgent\\\":\\\"AWSInternal\\\",\\\"requestParameters\\\":{\\\"attribute\\\":{\\\"Policy\\\":\\\"{\\\\\\\"Version\\\\\\\":\\\\\\\"2012-10-17\\\\\\\",\\\\\\\"Id\\\\\\\":\\\\\\\"__default_policy_ID\\\\\\\",\\\\\\\"Statement\\\\\\\":[{\\\\\\\"Sid\\\\\\\":\\\\\\\"__owner_statement\\\\\\\",\\\\\\\"Effect\\\\\\\":\\\\\\\"Allow\\\\\\\",\\\\\\\"Principal\\\\\\\":{\\\\\\\"AWS\\\\\\\":\\\\\\\"123456678\\\\\\\"},\\\\\\\"Action\\\\\\\":[\\\\\\\"SQS:*\\\\\\\"],\\\\\\\"Resource\\\\\\\":\\\\\\\"arn:aws:sqs:us-west-2:123456678:TestPoojaNew\\\\\\\"}]}\\\",\\\"ReceiveMessageWaitTimeSeconds\\\":\\\"0\\\",\\\"SqsManagedSseEnabled\\\":\\\"true\\\",\\\"DelaySeconds\\\":\\\"0\\\",\\\"KmsMasterKeyId\\\":\\\"\\\",\\\"RedrivePolicy\\\":\\\"\\\",\\\"MessageRetentionPeriod\\\":\\\"345600\\\",\\\"MaximumMessageSize\\\":\\\"262144\\\",\\\"VisibilityTimeout\\\":\\\"30\\\",\\\"RedriveAllowPolicy\\\":\\\"\\\"},\\\"tags\\\":{\\\"test\\\":\\\"true\\\"}},\\\"responseElements\\\":{\\\"queueUrl\\\":\\\"https://sqs.us-west-2.amazonaws.com/123456678/TestPoojaNew\\\"},\\\"requestID\\\":\\\"7c41e87a-a828-5717-8eb2-b4b680b92479\\\",\\\"eventID\\\":\\\"85297ed4-f144-4afb-84ce-63e9e58556b4\\\",\\\"readOnly\\\":false,\\\"eventType\\\":\\\"AwsApiCall\\\",\\\"managementEvent\\\":true,\\\"recipientAccountId\\\":\\\"123456678\\\",\\\"eventCategory\\\":\\\"Management\\\",\\\"sessionCredentialFromConsole\\\":\\\"true\\\"}\"}]}"
+	var data events.CloudwatchLogsData
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudTrailLogs(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "sqs.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROAUCS54HEKDKHAECU5N:pooja.choudhary@logicmonitor.com\",\"arn\":\"arn:aws:sts::123456678:assumed-role/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6/pooja.choudhary@logicmonitor.com\",\"accountId\":\"123456678\",\"accessKeyId\":\"ASIAUCS54HEKPPHDNOGC\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROAUCS54HEKDKHAECU5N\",\"arn\":\"arn:aws:iam::123456678:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\",\"accountId\":\"123456678\",\"userName\":\"AWSReservedSSO_LM-Developer-Policy_c0615b7abc4ebbd6\"},\"webIdFederationData\":{},\"attributes\":{\"creationDate\":\"2023-05-03T08:34:17Z\",\"mfaAuthenticated\":\"false\"}}},\"eventTime\":\"2023-05-03T09:16:01Z\",\"eventSource\":\"sqs.amazonaws.com\",\"eventName\":\"CreateQueue\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"49.207.235.15\",\"userAgent\":\"AWSInternal\",\"requestParameters\":{\"attribute\":{\"Policy\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Id\\\":\\\"__default_policy_ID\\\",\\\"Statement\\\":[{\\\"Sid\\\":\\\"__owner_statement\\\",\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"123456678\\\"},\\\"Action\\\":[\\\"SQS:*\\\"],\\\"Resource\\\":\\\"arn:aws:sqs:us-west-2:123456678:TestPoojaNew\\\"}]}\",\"ReceiveMessageWaitTimeSeconds\":\"0\",\"SqsManagedSseEnabled\":\"true\",\"DelaySeconds\":\"0\",\"KmsMasterKeyId\":\"\",\"RedrivePolicy\":\"\",\"MessageRetentionPeriod\":\"345600\",\"MaximumMessageSize\":\"262144\",\"VisibilityTimeout\":\"30\",\"RedriveAllowPolicy\":\"\"},\"tags\":{\"test\":\"true\"}},\"responseElements\":{\"queueUrl\":\"https://sqs.us-west-2.amazonaws.com/123456678/TestPoojaNew\"},\"requestID\":\"7c41e87a-a828-5717-8eb2-b4b680b92479\",\"eventID\":\"85297ed4-f144-4afb-84ce-63e9e58556b4\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456678\",\"eventCategory\":\"Management\",\"sessionCredentialFromConsole\":\"true\"}",
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:sqs::123456678:TestPoojaNew"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestParseCloudtrailLogsS3ForARN(t *testing.T) {
+	var s = "{\"owner\":\"123456678\",\"logGroup\":\"/aws/cloudtrail\",\"logStream\":\"123456678_CloudTrail_us-west-2_3\",\"subscriptionFilters\":[\"testsubslambda\"],\"messageType\":\"DATA_MESSAGE\",\"logEvents\":[{\"id\":\"\",\"timestamp\":123456789,\"message\":\"{\\\"eventVersion\\\":\\\"1.08\\\",\\\"userIdentity\\\":{\\\"type\\\":\\\"AWSService\\\",\\\"invokedBy\\\":\\\"cloudtrail.amazonaws.com\\\"},\\\"eventTime\\\":\\\"2023-03-03T07:30:04Z\\\",\\\"eventSource\\\":\\\"s3.amazonaws.com\\\",\\\"eventName\\\":\\\"GetBucketAcl\\\",\\\"awsRegion\\\":\\\"us-east-1\\\",\\\"sourceIPAddress\\\":\\\"cloudtrail.amazonaws.com\\\",\\\"userAgent\\\":\\\"cloudtrail.amazonaws.com\\\",\\\"requestParameters\\\":{\\\"Host\\\":\\\"aws-cloudtrail-logs-700010466334-8d075b05.s3.us-east-1.amazonaws.com\\\",\\\"acl\\\":\\\"\\\"},\\\"responseElements\\\":null,\\\"additionalEventData\\\":{\\\"SignatureVersion\\\":\\\"SigV4\\\",\\\"CipherSuite\\\":\\\"ECDHE-RSA-AES128-GCM-SHA256\\\",\\\"bytesTransferredIn\\\":0,\\\"AuthenticationMethod\\\":\\\"AuthHeader\\\",\\\"x-amz-id-2\\\":\\\"La8vQCxEf9pcqy/H8Y7Rs7aULfw0Qkc0EI+uKOFTyuMu8of/2a/yvPO6hKck3V5YaGneBCVwzkw=\\\",\\\"bytesTransferredOut\\\":568},\\\"requestID\\\":\\\"TAQNDGTZC32834P4\\\",\\\"eventID\\\":\\\"2514d9c5-5365-4b24-ac86-241dea825ad6\\\",\\\"readOnly\\\":true,\\\"resources\\\":[{\\\"accountId\\\":\\\"700010466334\\\",\\\"type\\\":\\\"AWS::S3::Bucket\\\",\\\"ARN\\\":\\\"arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05\\\"}],\\\"eventType\\\":\\\"AwsApiCall\\\",\\\"managementEvent\\\":true,\\\"recipientAccountId\\\":\\\"700010466334\\\",\\\"sharedEventID\\\":\\\"59523b9c-953d-4110-b4d5-b8209621af88\\\",\\\"eventCategory\\\":\\\"Management\\\"}\"}]}"
+	var data events.CloudwatchLogsData
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudTrailLogs(data)
+
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.amazonaws.com"}
+
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AWSService\",\"invokedBy\":\"cloudtrail.amazonaws.com\"},\"eventTime\":\"2023-03-03T07:30:04Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"GetBucketAcl\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"cloudtrail.amazonaws.com\",\"userAgent\":\"cloudtrail.amazonaws.com\",\"requestParameters\":{\"Host\":\"aws-cloudtrail-logs-700010466334-8d075b05.s3.us-east-1.amazonaws.com\",\"acl\":\"\"},\"responseElements\":null,\"additionalEventData\":{\"SignatureVersion\":\"SigV4\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"bytesTransferredIn\":0,\"AuthenticationMethod\":\"AuthHeader\",\"x-amz-id-2\":\"La8vQCxEf9pcqy/H8Y7Rs7aULfw0Qkc0EI+uKOFTyuMu8of/2a/yvPO6hKck3V5YaGneBCVwzkw=\",\"bytesTransferredOut\":568},\"requestID\":\"TAQNDGTZC32834P4\",\"eventID\":\"2514d9c5-5365-4b24-ac86-241dea825ad6\",\"readOnly\":true,\"resources\":[{\"accountId\":\"700010466334\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05\"}],\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"700010466334\",\"sharedEventID\":\"59523b9c-953d-4110-b4d5-b8209621af88\",\"eventCategory\":\"Management\"}",
+		Timestamp:  time.Date(1970, time.January, 2, 10, 17, 36, 789000000, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::aws-cloudtrail-logs-700010466334-8d075b05"},
+		Metadata:   metadataMap,
+	}
+
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsS3(t *testing.T) {
+	var s = "{\"account\":\"280443500820\",\"detail\":{\"additionalEventData\":{\"AuthenticationMethod\":\"AuthHeader\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"SignatureVersion\":\"SigV4\",\"bytesTransferredIn\":0,\"bytesTransferredOut\":0,\"x-amz-id-2\":\"UJNZntIyly1aAdiFVSPCwh14QRbyGaVQsbTjtgaNHRYgy0gl4p8c2Uu8Iu498icXe/3JHf9VFHo=\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"b9d131b3-70c7-4f74-a203-bddda20b7469\",\"eventName\":\"HeadBucket\",\"eventSource\":\"s3.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:54Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":true,\"recipientAccountId\":\"280443500820\",\"requestID\":\"J9ZE535Z4A4RVWZF\",\"requestParameters\":{\"Host\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"bucketName\":\"sagemaker-studio-280443500820-6jk579yrjdw\"},\"resources\":[{\"ARNPrefix\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw/\",\"type\":\"AWS::S3::Object\"},{\"ARN\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw\",\"accountId\":\"1234567\",\"type\":\"AWS::S3::Bucket\"}],\"responseElements\":null,\"sourceIPAddress\":\"10.54.148.148\",\"tlsDetails\":{\"cipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"clientProvidedHostHeader\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"tlsVersion\":\"TLSv1.2\"},\"userAgent\":\"[aws-sdk-java/1.12.498Linux/5.10.178-162.673.amzn2.x86_64OpenJDK_64-Bit_Server_VM/17.0.7+7-LTSjava/17.0.7vendor/Amazon.com_Inc.cfg/retry-mode/legacy]\",\"userIdentity\":{\"accessKeyId\":\"ASIAUCS54HEKCWHITL6Z\",\"accountId\":\"1234567\",\"arn\":\"arn:aws:sts::280443500820:assumed-role/aws-test-pooja-role/LMAssumeRoleSession\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ:LMAssumeRoleSession\",\"sessionContext\":{\"attributes\":{\"creationDate\":\"2023-07-13T09:06:17Z\",\"mfaAuthenticated\":\"false\"},\"sessionIssuer\":{\"accountId\":\"1234567\",\"arn\":\"arn:aws:iam::280443500820:role/aws-test-pooja-role\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ\",\"type\":\"Role\",\"userName\":\"aws-test-pooja-role\"}},\"type\":\"AssumedRole\"},\"vpcEndpointId\":\"vpce-051f8c152e5ab9b9d\"},\"detail-type\":\"AWS API Call via CloudTrail\",\"id\":\"0cc13242-9685-6b5a-4881-e970d28cc19c\",\"region\":\"us-west-2\",\"resources\":[],\"source\":\"aws.s3\",\"time\":\"2023-07-13T09:52:54Z\",\"version\":\"0\"}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "s3.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"additionalEventData\":{\"AuthenticationMethod\":\"AuthHeader\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"SignatureVersion\":\"SigV4\",\"bytesTransferredIn\":0,\"bytesTransferredOut\":0,\"x-amz-id-2\":\"UJNZntIyly1aAdiFVSPCwh14QRbyGaVQsbTjtgaNHRYgy0gl4p8c2Uu8Iu498icXe/3JHf9VFHo=\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"b9d131b3-70c7-4f74-a203-bddda20b7469\",\"eventName\":\"HeadBucket\",\"eventSource\":\"s3.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:54Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":true,\"recipientAccountId\":\"280443500820\",\"requestID\":\"J9ZE535Z4A4RVWZF\",\"requestParameters\":{\"Host\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"bucketName\":\"sagemaker-studio-280443500820-6jk579yrjdw\"},\"resources\":[{\"ARNPrefix\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw/\",\"type\":\"AWS::S3::Object\"},{\"ARN\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw\",\"accountId\":\"1234567\",\"type\":\"AWS::S3::Bucket\"}],\"responseElements\":null,\"sourceIPAddress\":\"10.54.148.148\",\"tlsDetails\":{\"cipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"clientProvidedHostHeader\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"tlsVersion\":\"TLSv1.2\"},\"userAgent\":\"[aws-sdk-java/1.12.498Linux/5.10.178-162.673.amzn2.x86_64OpenJDK_64-Bit_Server_VM/17.0.7+7-LTSjava/17.0.7vendor/Amazon.com_Inc.cfg/retry-mode/legacy]\",\"userIdentity\":{\"accessKeyId\":\"ASIAUCS54HEKCWHITL6Z\",\"accountId\":\"1234567\",\"arn\":\"arn:aws:sts::280443500820:assumed-role/aws-test-pooja-role/LMAssumeRoleSession\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ:LMAssumeRoleSession\",\"sessionContext\":{\"attributes\":{\"creationDate\":\"2023-07-13T09:06:17Z\",\"mfaAuthenticated\":\"false\"},\"sessionIssuer\":{\"accountId\":\"1234567\",\"arn\":\"arn:aws:iam::280443500820:role/aws-test-pooja-role\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ\",\"type\":\"Role\",\"userName\":\"aws-test-pooja-role\"}},\"type\":\"AssumedRole\"},\"vpcEndpointId\":\"vpce-051f8c152e5ab9b9d\"}",
+		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 54, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsLambda(t *testing.T) {
+	var s = "{\"account\":\"280443500820\",\"detail\":{\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder:$LATEST\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"e34805e1-c975-40ff-96e9-8fb01c4bd5ec\",\"eventName\":\"Invoke\",\"eventSource\":\"lambda.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:58Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":false,\"recipientAccountId\":\"280443500820\",\"requestID\":\"84fe1797-0fa3-4c28-a84b-318328f0ff1f\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceAccount\":\"280443500820\",\"sourceArn\":\"arn:aws:logs:us-west-2:280443500820:log-group:/aws/events/cloudwatchEventsTest:*\"},\"resources\":[{\"ARN\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\"}],\"responseElements\":null,\"sharedEventID\":\"779c751a-2152-4151-93b9-254d90b5819a\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"userIdentity\":{\"invokedBy\":\"logs.amazonaws.com\",\"type\":\"AWSService\"}},\"detail-type\":\"AWS API Call via CloudTrail\",\"id\":\"e8954201-f3c4-54cd-9665-dee6ab22bf5a\",\"region\":\"us-west-2\",\"resources\":[],\"source\":\"aws.lambda\",\"time\":\"2023-07-13T09:52:58Z\",\"version\":\"0\"}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "lambda.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"additionalEventData\":{\"functionVersion\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder:$LATEST\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"e34805e1-c975-40ff-96e9-8fb01c4bd5ec\",\"eventName\":\"Invoke\",\"eventSource\":\"lambda.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:58Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":false,\"recipientAccountId\":\"280443500820\",\"requestID\":\"84fe1797-0fa3-4c28-a84b-318328f0ff1f\",\"requestParameters\":{\"functionName\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"invocationType\":\"Event\",\"sourceAccount\":\"280443500820\",\"sourceArn\":\"arn:aws:logs:us-west-2:280443500820:log-group:/aws/events/cloudwatchEventsTest:*\"},\"resources\":[{\"ARN\":\"arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder\",\"accountId\":\"280443500820\",\"type\":\"AWS::Lambda::Function\"}],\"responseElements\":null,\"sharedEventID\":\"779c751a-2152-4151-93b9-254d90b5819a\",\"sourceIPAddress\":\"logs.amazonaws.com\",\"userAgent\":\"logs.amazonaws.com\",\"userIdentity\":{\"invokedBy\":\"logs.amazonaws.com\",\"type\":\"AWSService\"}}",
+		Timestamp:  time.Date(2023, time.July, 13, 9, 52, 58, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:lambda:us-west-2:280443500820:function:LMLogsForwarder"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsEC2Launch(t *testing.T) {
+	var s = "{\"version\":\"0\",\"id\":\"1681ab87-4a09-459f-95a2-7fa09403c4b7\",\"detail-type\":\"EC2InstanceLaunchUnsuccessful\",\"source\":\"aws.autoscaling\",\"account\":\"123456789012\",\"time\":\"2015-11-11T21:42:36Z\",\"region\":\"us-east-1\",\"resources\":[\"arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:528ffce5-ef9f-4c1d-8d18-5d005b4a438c:autoScalingGroupName/sampleBrokenASG\",\"arn:aws:ec2:us-east-1:123456789012:instance/\"],\"detail\":{\"StatusCode\":\"Failed\",\"AutoScalingGroupName\":\"brokenASG\",\"ActivityId\":\"06076c51-4874-487d-b15b-7895a713ab55\",\"Details\":{\"AvailabilityZone\":\"us-east-1e\",\"SubnetID\":\"subnet-16c5df2c\"},\"RequestId\":\"06076c51-4874-487d-b15b-7895a713ab55\",\"EndTime\":\"2015-11-11T21:42:36.000Z\",\"EC2InstanceId\":\"\",\"StartTime\":\"2015-11-11T21:42:36.698Z\",\"Cause\":\"At2015-11-11T21:42:09ZauserrequestupdateofAutoScalingGroupconstraintstomin:0,max:10,desired:2changingthedesiredcapacityfrom0to2.At2015-11-11T21:42:35Zaninstancewasstartedinresponsetoadifferencebetweendesiredandactualcapacity,increasingthecapacityfrom0to2.\"}}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+
+	assert.Len(t, logs, 1)
+}
+
+func TestCustomMetadataFromJsonEvent(t *testing.T) {
+	testString := "{\"account\":\"280443500820\",\"detail\":{\"additionalEventData\":{\"AuthenticationMethod\":\"AuthHeader\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"SignatureVersion\":\"SigV4\",\"bytesTransferredIn\":0,\"bytesTransferredOut\":0,\"x-amz-id-2\":\"UJNZntIyly1aAdiFVSPCwh14QRbyGaVQsbTjtgaNHRYgy0gl4p8c2Uu8Iu498icXe/3JHf9VFHo=\"},\"awsRegion\":\"us-west-2\",\"eventCategory\":\"Data\",\"eventID\":\"b9d131b3-70c7-4f74-a203-bddda20b7469\",\"eventName\":\"HeadBucket\",\"eventSource\":\"s3.amazonaws.com\",\"eventTime\":\"2023-07-13T09:52:54Z\",\"eventType\":\"AwsApiCall\",\"eventVersion\":\"1.08\",\"managementEvent\":false,\"readOnly\":true,\"recipientAccountId\":\"280443500820\",\"requestID\":\"J9ZE535Z4A4RVWZF\",\"requestParameters\":{\"Host\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"bucketName\":\"sagemaker-studio-280443500820-6jk579yrjdw\"},\"resources\":[{\"ARNPrefix\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw/\",\"type\":\"AWS::S3::Object\"},{\"ARN\":\"arn:aws:s3:::sagemaker-studio-280443500820-6jk579yrjdw\",\"accountId\":\"1234567\",\"type\":\"AWS::S3::Bucket\"}],\"responseElements\":null,\"sourceIPAddress\":\"10.54.148.148\",\"tlsDetails\":{\"cipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"clientProvidedHostHeader\":\"sagemaker-studio-280443500820-6jk579yrjdw.s3.us-west-2.amazonaws.com\",\"tlsVersion\":\"TLSv1.2\"},\"userAgent\":\"[aws-sdk-java/1.12.498Linux/5.10.178-162.673.amzn2.x86_64OpenJDK_64-Bit_Server_VM/17.0.7+7-LTSjava/17.0.7vendor/Amazon.com_Inc.cfg/retry-mode/legacy]\",\"userIdentity\":{\"accessKeyId\":\"ASIAUCS54HEKCWHITL6Z\",\"accountId\":\"1234567\",\"arn\":\"arn:aws:sts::280443500820:assumed-role/aws-test-pooja-role/LMAssumeRoleSession\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ:LMAssumeRoleSession\",\"sessionContext\":{\"attributes\":{\"creationDate\":\"2023-07-13T09:06:17Z\",\"mfaAuthenticated\":\"false\"},\"sessionIssuer\":{\"accountId\":\"1234567\",\"arn\":\"arn:aws:iam::280443500820:role/aws-test-pooja-role\",\"principalId\":\"AROAUCS54HEKLBZ4YGEZZ\",\"type\":\"Role\",\"userName\":\"aws-test-pooja-role\"}},\"type\":\"AssumedRole\"},\"vpcEndpointId\":\"vpce-051f8c152e5ab9b9d\"},\"detail-type\":\"AWS API Call via CloudTrail\",\"id\":\"0cc13242-9685-6b5a-4881-e970d28cc19c\",\"region\":\"us-west-2\",\"resources\":[],\"source\":\"aws.s3\",\"time\":\"2023-07-13T09:52:54Z\",\"version\":\"0\"}"
+	jsonKeys := []string{"account", "detail.additionalEventData.AuthenticationMethod", "detail.resources.[0].type"}
+	customMetadataMap := make(map[string]interface{})
+	addCustomMetadataFromRawJson(customMetadataMap, testString, jsonKeys)
+	assert.Equal(t, customMetadataMap["account"], "280443500820")
+	assert.Equal(t, customMetadataMap["detail.additionalEventData.AuthenticationMethod"], "AuthHeader")
+	assert.Equal(t, customMetadataMap["detail.resources.[0].type"], "AWS::S3::Object")
+
+}
+
+func TestCloudWatchLogMetadataExtraction(t *testing.T) {
+	addCloudWatchMetadata = true
+	cloudWatchLogData1 := events.CloudwatchLogsData{
+		Owner:               "dummy",
+		LogGroup:            "dummyloggroup",
+		LogStream:           "dummyLogStream",
+		SubscriptionFilters: []string{"abc", "def"},
+		MessageType:         "dummyMessageType",
+		LogEvents:           []events.CloudwatchLogsLogEvent{},
+	}
+
+	cloudWatchLogMetaDataMap := make(map[string]interface{})
+	addCloudWatchEventMetadata(cloudWatchLogMetaDataMap, &cloudWatchLogData1)
+	assert.Equal(t, cloudWatchLogMetaDataMap["logGroup"], "dummyloggroup")
+	assert.Equal(t, cloudWatchLogMetaDataMap["logStream"], "dummyLogStream")
+
+}
+
+func TestCloudWatchEventsS3Else(t *testing.T) {
+	var s = "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"ObjectCreated\",\"source\":\"aws.s3\",\"account\":\"123456789012\",\"time\":\"2021-11-12T00:00:00Z\",\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"example-bucket\"},\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\",\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"00617F08299329D189\"},\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\",\"reason\":\"PutObject\"}}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_type": "aws.s3"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"ObjectCreated\",\"source\":\"aws.s3\",\"account\":\"123456789012\",\"time\":\"2021-11-12T00:00:00Z\",\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"example-bucket\"},\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\",\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"00617F08299329D189\"},\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\",\"reason\":\"PutObject\"}}",
+		Timestamp:  time.Date(2021, time.November, 12, 0, 0, 0, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:s3:::example-bucket"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsEC2Else(t *testing.T) {
+	t.Setenv("LM_TENANT_IDENTIFIER", "123456")
+	t.Setenv("LM_ACCOUNT", "test")
+	ExtractEnvironmentVariables()
+	var s = "{\"account\":\"280443500820\",\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"},\"detail-type\":\"EC2InstanceState-changeNotification\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"source\":\"aws.ec2\",\"time\":\"2023-09-04T10:45:46Z\",\"version\":\"0\"}"
+	var data events.CloudWatchEvent
+	err := json.Unmarshal([]byte(s), &data)
+	if err != nil {
+		log.Println("error in unmarshal")
+	}
+	logs := parseCloudWatchEvents(data)
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_resource.type":"AWS", "_type": "aws.ec2", "_lm.tenantId": "123456"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"version\":\"0\",\"id\":\"e38aa066-51af-cac4-d0d5-4f649c9f23b7\",\"detail-type\":\"EC2InstanceState-changeNotification\",\"source\":\"aws.ec2\",\"account\":\"280443500820\",\"time\":\"2023-09-04T10:45:46Z\",\"region\":\"us-west-2\",\"resources\":[\"arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac\"],\"detail\":{\"instance-id\":\"i-0d51cd459226160ac\",\"state\":\"pending\"}}",
+		Timestamp:  time.Date(2023, time.September, 4, 10, 45, 46, 0, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:ec2:us-west-2:280443500820:instance/i-0d51cd459226160ac"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsBedrockModel(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "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",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	localTime := time.Local
+	timeValue :=time.Date(2024, time.August, 28, 18, 30, 10, 0, time.Local)
+	if strings.Contains(localTime.String(), "UTC") { //Test case is running at system with time.Local as UTC
+		timeValue = time.Date(2024, time.August, 28, 13, 00, 10, 0, time.Local)
+	}
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_resource.type":"AWS", "_type": "bedrock.amazonaws.com", "logGroup": "/aws/bedrock/modelinvocate", "logStream": "aws/bedrock/modelinvocations", "_lm.tenantId": "123456"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"schemaType\":\"ModelInvocationLog\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2024-08-28T13:00:10Z\",\"accountId\":\"280443500820\",\"identity\":{\"arn\":\"arn:aws:sts::280443500820:assumed-role/AmazonBedrockExecutionRoleForKnowledgeBase_3br46/BedrockKnowledgeBaseCPSession-RTWLKRR7XH\"},\"region\":\"us-west-2\",\"requestId\":\"e3ecd7d5-6afe-44ce-aa50-3f4d03f4124e\",\"operation\":\"InvokeModel\",\"modelId\":\"arn:aws:bedrock:us-west-2::foundation-model/cohere.embed-english-v3\",\"input\":{\"inputContentType\":\"application/json\",\"inputBodyJson\":{\"texts\":[\"test\"],\"input_type\":\"search_query\",\"truncate\":\"NONE\"},\"inputTokenCount\":1},\"output\":{\"outputContentType\":\"application/json\",\"outputBodyJson\":{\"id\":\"e3ecd7d5-6afe-44ce-aa50-3f4d03f4124e\",\"texts\":[\"test\"],\"embeddings\":[[-0.0037117004,-0.024276733,-0.040039062,-0.053253174,-0.038848877,-0.005870819,-0.029403687,0.0368042,-0.021606445,0.03475952,-0.029525757,0.001168251,8.1443787E-4,-0.0077323914,0.014884949,-0.049591064,0.044952393,-0.01109314,-0.013389587,-0.013412476,0.010353088,0.02432251,-0.0440979,0.03366089,0.022720337,0.08239746,-0.01802063,0.0020885468,-0.05456543,-0.065979004,0.012931824,0.03668213,0.015274048,0.037872314,-0.031402588,0.04159546,-0.0033779144,-0.015464783,0.010368347,0.005378723,0.009399414,-0.016983032,-0.022033691,-0.032836914,-0.025436401,-0.018478394,0.01574707,-0.021331787,0.07312012,0.0357666,0.033996582,0.031799316,0.009750366,-6.8712234E-4,-0.017044067,0.017486572,-0.05532837,-0.0017375946,0.026733398,-0.015945435,-0.007904053,0.0146865845,0.044433594,0.03945923,0.021087646,-0.005756378,0.009185791,0.006149292,0.032592773,0.0029907227,-0.0018444061,-0.024002075,0.013122559,-0.05114746,-0.014213562,0.013946533,-0.0044784546,-0.008964539,0.005874634,-0.020553589,0.0014476776,-0.049591064,-0.01335144,0.03137207,-0.019729614,0.055267334,0.004371643,-0.02532959,0.010566711,-0.02810669,0.017059326,0.06549072,-0.015853882,-9.021759E-4,-0.029373169,-0.034057617,-0.0015487671,-0.013267517,-6.995201E-4,-0.015609741,-0.017349243,-0.022598267,0.0032749176,-0.017822266,-0.022766113,0.01146698,-0.0040397644,0.018997192,0.0042800903,0.045715332,-0.033081055,0.021759033,-0.018249512,-0.011047363,-0.037841797,0.009254456,-0.038085938,0.026428223,0.0017518997,0.042022705,0.0058937073,0.028823853,0.027236938,-0.011405945,0.0067329407,1.1789799E-4,9.403229E-4,-0.06341553,0.011726379,-0.0036945343,-0.010108948,0.058898926,-0.07696533,-0.016845703,-0.028381348,-0.00198555,-0.036254883,-0.02003479,-0.025009155,0.042419434,0.034057617,-0.037322998,0.049591064,0.01550293,-0.024734497,0.07733154,0.03152466,-0.037628174,3.6263466E-4,-0.054748535,-0.025772095,-0.031173706,0.0065193176,0.07165527,-0.050628662,0.05038452,-0.07543945,0.033325195,0.035217285,0.030532837,-0.017868042,0.018966675,0.041381836,0.0011472702,-0.024032593,5.6505203E-4,0.042266846,0.018951416,0.02319336,0.016281128,-0.03036499,0.017501831,0.115234375,0.056030273,-0.010871887,-0.0011043549,-0.023208618,0.025985718,0.018859863,0.061431885,0.027786255,-0.029724121,-0.010261536,0.020065308,0.019454956,-0.06640625,0.01398468,-0.021118164,0.01361084,0.026306152,-0.010101318,0.01134491,-0.00969696,-0.03778076,0.035095215,0.0070228577,-0.070007324,-0.014007568,-0.0034732819,-0.021347046,-0.004337311,-0.014709473,0.036621094,-0.014022827,-0.005168915,-0.044647217,0.0051956177,-0.0041923523,0.013999939,-0.013916016,-9.0646744E-4,-0.04748535,7.56979E-6,-0.029251099,-0.036071777,0.016921997,0.0132369995,-0.055908203,6.713867E-4,4.3845177E-4,0.016555786,0.023788452,-0.0390625,0.05444336,-0.012214661,0.016281128,-0.032165527,0.024169922,-0.007019043,-0.007522583,0.05227661,0.010765076,0.029159546,0.022064209,-0.002286911,0.014175415,0.017288208,-0.04220581,-0.0024089813,0.025375366,0.022735596,0.0077552795,-0.022842407,-0.019088745,0.06567383,0.058654785,0.057006836,-0.03024292,0.012687683,0.06555176,0.024551392,-0.004634857,0.01398468,0.008384705,-0.004432678,0.01626587,-0.032043457,-0.009391785,0.022857666,-0.019058228,-0.009399414,-0.022903442,4.10676E-5,-0.010925293,-0.0052337646,-0.02281189,-0.016296387,0.00333786,-0.02406311,-1.3303757E-4,0.01927185,-0.04269409,-0.02809143,0.0077552795,0.1083374,0.021591187,-0.089660645,-0.006187439,0.029785156,0.014289856,-0.0031795502,0.047424316,0.0128479,-0.010421753,0.018005371,0.06585693,-0.002122879,-0.023345947,-0.0129776,0.003791809,0.039611816,0.005584717,-0.029144287,0.014060974,5.9986115E-4,-0.028884888,0.054626465,0.023757935,-0.0021629333,-0.066833496,0.011184692,0.012954712,-0.041870117,-0.010658264,0.00806427,-0.019042969,0.0345459,0.010910034,0.016616821,-0.019546509,-0.007205963,0.01335907,0.03161621,2.9993057E-4,0.010116577,0.002653122,-0.01776123,0.0149383545,-0.064941406,-0.0043754578,0.022277832,-0.003227234,-0.0519104,-0.016281128,-0.027160645,0.026107788,-0.054382324,-0.026672363,-0.08544922,0.006565094,0.06100464,-0.0055656433,0.015464783,0.014205933,0.004371643,0.02784729,0.03213501,-0.022415161,-1.7523766E-4,-0.024856567,0.037261963,0.022079468,0.009033203,-0.008560181,-0.007785797,0.021514893,-0.05517578,0.029541016,-0.035217285,-0.04333496,0.004966736,-0.057250977,0.003376007,0.00223732,0.05038452,-0.017807007,-0.01612854,0.037475586,0.057922363,-0.024261475,0.01448822,-0.020751953,5.955696E-4,0.05645752,-0.03439331,-0.032318115,-0.009399414,0.041259766,0.05822754,0.05291748,0.0715332,0.0076065063,-0.030349731,-0.008857727,-0.022659302,-0.070129395,-0.008781433,-0.07122803,0.0090408325,-0.011657715,-0.015510559,-0.0032253265,0.018829346,0.008506775,0.040405273,0.064819336,0.036010742,0.044433594,0.023727417,-0.030685425,-0.024124146,0.04348755,-0.026046753,-0.027786255,-0.017745972,-0.019058228,-0.00705719,0.03488159,-0.038024902,-0.0049095154,0.03378296,0.007610321,-0.0178833,-0.0013065338,-0.04888916,0.015823364,0.0017910004,-0.012168884,0.00944519,0.07550049,-0.0071258545,-0.0109939575,-0.0020275116,-0.01940918,-0.0024089813,0.026000977,0.03591919,-0.020004272,0.014724731,-0.0046844482,0.008666992,0.0070266724,0.02760315,0.033081055,0.014785767,0.037078857,0.014175415,-0.044036865,0.09564209,0.014389038,0.0020503998,-0.011764526,-0.019882202,-0.023498535,0.0029678345,0.08496094,-0.013931274,0.06378174,0.010116577,-0.024169922,0.04034424,0.045776367,0.02003479,-0.0018024445,-0.014175415,-0.017532349,0.043151855,0.052337646,-0.04006958,0.009925842,-0.06311035,0.015777588,0.0047569275,0.055847168,-0.016921997,0.05456543,0.0619812,0.047454834,0.05038452,-0.024642944,-0.030960083,-0.023651123,-0.03189087,0.004360199,0.01399231,0.03677368,8.172989E-4,0.028945923,-0.01902771,-0.006778717,0.04574585,-0.04321289,0.0013618469,-0.012069702,0.056365967,0.033935547,-0.06549072,-0.04296875,0.003648758,0.046417236,-0.016189575,0.020462036,-0.0039634705,-0.014793396,-0.029769897,0.018066406,-0.04864502,-0.0362854,0.034240723,0.03237915,0.04272461,-0.013366699,0.050933838,-0.009788513,-0.017410278,-0.0140686035,-0.013633728,0.0090408325,-0.0107421875,-0.07006836,-0.03765869,-0.005344391,0.037719727,0.020004272,0.015388489,-0.03604126,-0.038879395,0.0025310516,0.056152344,0.023986816,-0.0076828003,-0.009559631,-0.0072631836,0.010902405,-0.026000977,0.051513672,0.0018749237,-0.0078125,0.016357422,-0.021347046,0.030166626,-4.2557716E-4,0.08856201,0.023284912,-0.047424316,0.017669678,0.027709961,-0.023864746,-0.02406311,-0.0418396,0.032928467,0.021392822,-0.0056762695,0.0027561188,0.0024547577,0.036224365,-0.036743164,-0.021499634,-0.0027446747,0.016220093,-0.04650879,-0.031463623,0.018035889,0.0413208,0.034210205,0.003129959,0.019821167,0.03463745,-0.008010864,0.052459717,-0.035827637,-0.03805542,-0.007484436,-0.0045814514,8.587837E-4,0.040649414,-0.0287323,-0.010108948,-0.023727417,0.04434204,0.0012893677,-0.014221191,-0.00440979,-0.0064849854,0.033050537,0.023132324,0.025619507,-0.060668945,0.0043296814,0.032684326,-0.0054740906,-0.016555786,-0.004917145,-0.039367676,-0.028137207,-0.032684326,0.004798889,0.010292053,0.01991272,0.014518738,0.011917114,0.021331787,-0.010269165,0.04397583,0.01600647,0.07354736,-0.06567383,0.03503418,-0.027008057,0.01348114,-0.020050049,-0.014038086,0.024398804,0.009613037,-0.019821167,-0.026062012,0.0066184998,-0.05404663,0.043518066,-0.01828003,-0.07623291,0.016342163,0.0050086975,-0.03173828,0.07196045,0.027511597,-0.025848389,-0.02482605,0.02154541,-0.004245758,0.007663727,-0.025115967,-0.052337646,0.048736572,-0.036010742,-0.019195557,0.031921387,0.031707764,-0.0014257431,-0.060058594,-0.009178162,0.0045776367,0.020889282,0.018203735,0.012588501,-0.02848816,-0.014816284,-0.030059814,-0.012535095,0.018997192,-0.0368042,-2.5320053E-4,-0.04244995,-0.0501709,-0.021835327,0.030929565,-0.0036678314,-0.05407715,-0.028045654,0.019424438,0.002664566,0.020523071,-0.00737381,-0.025009155,0.015007019,-0.021987915,-0.016571045,-0.04006958,-5.2165985E-4,-0.003440857,0.07116699,0.021453857,-0.051239014,0.029373169,0.050109863,-0.0021972656,0.016677856,0.08508301,-0.032196045,-0.008407593,0.009597778,0.037719727,-0.02722168,-0.025100708,0.009902954,0.01826477,0.04446411,0.0027542114,0.013023376,-0.014411926,-0.0236969,0.025894165,-0.058441162,-0.0423584,-0.03842163,0.012130737,0.046844482,0.037597656,0.0023612976,-0.03189087,0.0016994476,-0.0060539246,0.028366089,0.014015198,-0.046722412,0.048828125,0.0016174316,0.0023593903,-0.033996582,-0.006336212,-0.021484375,0.036499023,-0.033203125,0.018157959,0.012527466,-0.047912598,-0.017807007,0.03439331,-0.03744507,0.0015096664,0.01109314,0.010665894,0.0138168335,-0.012046814,7.953644E-4,0.020690918,-0.009307861,0.004306793,-0.02696228,0.00223732,0.0046081543,0.058288574,-0.054901123,-0.01902771,0.013046265,0.015914917,0.04901123,-0.0013542175,-0.009407043,0.022369385,0.0044555664,-0.03149414,0.06774902,-0.009002686,0.051605225,-9.717941E-4,0.0039100647,-0.003692627,0.00920105,-0.020721436,0.045166016,-0.02281189,-0.031311035,0.029830933,0.0069847107,0.0236969,0.012687683,0.038513184,0.01033783,-0.023757935,-0.061462402,-0.020996094,0.031234741,0.0033836365,-0.0070495605,0.052642822,0.022125244,0.029190063,0.016830444,0.013244629,0.0256958,-0.0019626617,-0.030838013,0.038116455,0.030822754,0.048461914,0.028900146,0.005256653,-0.041229248,-0.016235352,-0.060668945,-0.0093688965,-0.010231018,0.058685303,0.022064209,0.06451416,-0.0019340515,-0.005016327,0.022354126,-0.016860962,0.014434814,0.0019397736,-7.736683E-5,9.75132E-4,0.05291748,0.024841309,0.0098724365,-2.527237E-4,0.008110046,0.0155181885,-0.026992798,0.041748047,-0.045959473,-0.0051116943,-0.035491943,-0.0015363693,0.009239197,0.047332764,-0.034454346,1.4412403E-4,0.012931824,0.057403564,-0.031799316,0.021377563,-0.015129089,-0.030090332,-0.020965576,-0.017410278,0.016204834,-0.053833008,-0.018081665,-0.028121948,-0.0050239563,0.02406311,-0.0066490173,0.024810791,0.031021118,0.0022201538,-0.0126571655,0.0418396,-0.0014791489,0.035217285,-0.0024967194,-0.042266846,-0.05102539,-0.0022144318,0.06512451,1.232624E-4,0.0014228821,-0.07098389,0.017166138,0.057250977,0.016067505,0.005092621,-0.004425049,0.008491516,0.036743164,-0.04260254,-0.007095337,-0.008003235,0.023162842,0.007858276,0.026062012,0.06732178,0.058532715,-0.03451538,-0.036865234,-0.032043457,0.038482666,0.0060539246,-0.006401062,-0.014915466,-0.015541077,-0.0059127808,-0.0138168335,-0.02746582,0.0064811707,-0.0020580292,0.052764893,0.05557251,-0.002714157,0.010101318,-0.006729126,-0.0135650635,0.02406311,0.068603516,0.0149383545,-0.0021800995,-0.004009247,0.028182983,0.03390503,0.03692627,0.04647827,-0.017456055,0.031051636,-0.0049362183,-0.016448975,0.0044059753,-0.022872925,-0.039520264,-0.0014333725,0.047210693,-9.832382E-4,-0.022079468,-0.02432251,0.0013456345,0.024856567,0.0011844635,0.0056037903,0.07104492,-0.038391113,0.011772156,0.030441284,-0.01625061,-0.019226074,-0.052246094,0.00141716,0.0019321442,0.018112183,0.0016050339,-0.0033683777,-0.053253174,-0.015029907,-0.009918213,0.029663086,0.07757568,-0.01928711,-0.0057029724,-0.064331055,0.00894165,-0.043518066,-0.024459839,0.03262329,-0.07196045,0.015701294,0.0047721863,0.032073975,-0.008041382,-0.040618896,-0.045135498,0.030441284,-0.02067566,0.012519836,0.040649414,-0.016403198,-0.024871826,-0.039611816,-0.015914917,0.025314331,0.014381409,-0.02645874,0.035186768,-1.02579594E-4,-0.03866577,-0.032440186,0.010124207,0.022018433,-0.052856445,-0.039489746,0.024276733,0.016067505,-0.03881836,-0.057800293,-0.060455322,-0.003194809,-0.03375244,0.0026817322,-0.017669678,-0.016586304,-0.0024051666,-0.016143799,0.012229919,-0.012794495,0.008834839,-0.027313232,0.052703857,0.0049095154,0.0038757324,-0.010726929,-0.011932373,0.0017251968,-0.013519287,-0.06549072,0.014541626,-0.016525269,0.032592773,-0.046142578,-0.016189575,0.028961182,0.05999756,6.303787E-4,0.0057754517,0.015731812,0.022125244,-0.04171753,3.4856796E-4,-0.02708435,-0.007461548,-0.025817871,0.005569458,-0.009925842,-0.033203125,0.0049705505,-0.08508301,-0.024017334,-0.017547607,0.01876831,-0.006603241,-0.005634308,-0.015281677,-0.0256958,0.043151855,-0.0030670166,-0.052734375,-0.055267334,0.0859375,-0.04421997,-0.014427185,-7.519722E-4,0.0317688,-0.008674622,0.020980835,-0.011779785,0.037963867,-0.023544312,-0.019180298,0.03164673,-0.046966553,0.015670776,0.0024795532,-0.012870789,-0.039154053,0.0093307495,-0.058380127,0.027801514,-0.03314209,-0.0010881424,0.022705078,0.027572632,0.06750488,0.01133728,0.012336731,0.013114929,-0.03378296,0.013183594,-0.019012451,-1.0955334E-4,-0.007701874,0.015380859,-0.04837036,0.012313843,0.06173706,-0.005924225,0.041870117]],\"response_type\":\"embeddings_floats\"}}}",
+		Timestamp:  timeValue.String(),
+		ResourceID: map[string]interface{}{"system.aws.arn": "arn:aws:bedrock:us-west-2::foundation-model/cohere.embed-english-v3"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsBedrockKB(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/5WSX2/aMBTFv8t9DsUJCQl+iyjNaPkniEalpbIMuUDWECPbAVWI7z7FBLaxiXWvVz8fn3PuPcIWleJrjD92CBQewzhkw95sFkY9sEAcCpRAwQmI67Y8QgKHgAW5WEdSlDug0OQH1dxjkWKai7VqLjCVYvnefC/EIcd0jY0FV9gMJ5NBvxvG/fGIDcbRrDmN54OX6dR//XLWm2mJfAsU/hCo3qtKGyxQ5UItZbbTmSieslyjVEC/gUal4c3o9PZY6Gp4hCwFCq3AbXuuS9rEbvlO4Hm23+n4bsd3Pcf3q1huJ+h4TtC2fdK27VbHdx3fpNTZFpXm2x1Q23fcwCPEtontW5fOgMIxAax+ZFc4uaVrIgF6TCAr1qgq9+y7WLAsTYAmEA1Hw+j1pfc1SsBKIOWaMyVKucQLQUZkGD2P4+7cEL+rKM11qQzXnYbzQX8Use54OBn04t6j4a9dsqpMxmVhaC4Lyg+K1pXTUjUOqHTDob/um96s8ufmjLbE2mplI1M6W6pz1KLcLlAysWIXRLFyl3KNVSZi/Z04R7uLqOUG0zLHlK2ErCU/jV+r+/SLLWpuVvLPn1LM8b71Q6Y3t4L3+BXP8v/owhios51Ol8tje5TqPE3AfiBmbfXVfuzQjGeaS92/dPMsFg8zc1XdDS/WlQMrgRz3mBu6P3oaJ3CC09vpBzfnOvJBBAAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	epochMillis := int64(1724850011017)
+	
+	var metadataMap = map[string]interface{}{"_integration": "aws", "_resource.type":"AWS", "_type": "bedrock.amazonaws.com", "logGroup": "/aws/vendedlogs/bedrock/knowledge-base/APPLICATION_LOGS/RTWLKRR7XH", "logStream": "bedrock/knowledgebaseslogs", "_lm.tenantId": "123456"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"event_timestamp\":1724850011017,\"event\":{\"ingestion_job_id\":\"GMNMGXKEVG\",\"data_source_id\":\"0N0MGJOTCW\",\"ingestion_job_status\":\"CRAWLING_COMPLETED\",\"knowledge_base_arn\":\"arn:aws:bedrock:us-west-2:280443500820:knowledge-base/RTWLKRR7XH\",\"resource_statistics\":{\"number_of_resources_updated\":0,\"number_of_resources_ingested\":0,\"number_of_resources_scheduled_for_update\":0,\"number_of_resources_scheduled_for_ingestion\":0,\"number_of_resources_scheduled_for_metadata_update\":0,\"number_of_resources_deleted\":0,\"number_of_resources_with_metadata_updated\":0,\"number_of_resources_failed\":0,\"number_of_resources_scheduled_for_deletion\":0}},\"event_version\":\"1.0\",\"event_type\":\"StartIngestionJob.StatusChanged\",\"level\":\"INFO\"}",
+		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),
+		ResourceID: map[string]interface{}{"system.aws.accountid": "280443500820", "system.cloud.category": "AWS/LMAccount"},
+		Metadata:   metadataMap,
+	}
+	assert.Equal(t, expectedLMEvent, logs[0])
+}
+
+func TestCloudWatchEventsQBusiness(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/42RX2/TMBTFv4q5L7zUxHFuYjsvqEDZJm3A1Aok6BQ5idNGS+IQO63KtO+Omq3T+CPE8z2/e8499w5a45zemNWhN5DCu/lqnl0tlsv52QJmYPedGSAFLhliFDMmOYMZNHZzNtixhxQCvXfBznSlKRu7ccH3fHR1Z5wLdN83daF9bbtg8XnxYZVdfjxbBlUZMZSG0yoqkWKFmqowTyhHyRiPEqyK8sFi6QejW0jh+s1p59ut9sHVQ2KYgRtzVwx1f/R4XzfeDA7Sb3B5dWk3jn4a9K1uenp9isThZlq82JnOH5V3UJeQQiSl4koJVEqFMpFcMc6EQi6EYsgVjxiKhGHIYi5kGMbIBCYcYQa+bo3zuu0hDQUi4zziMXI5O/UKKdyt4VkXWV2uIV3D//SwhtkazDFt9mQ0wZzxmDKkTKxClkYyxfjrJG7sJvOH3kyqx6KmgS4KO3b+5P78odO8sN3ODO6XiIzzMFFC0SpBRVFqTSWPDI3jkplQ5Cws1QS7g/OmzR5PPuEyCWOshKSl0YJiLjjVOY9poZUIC5GrKnnAR2eG32EhVClkXlIT6ogiKqRaCqSxTniFiikt+R/wRG5N0zT2L7mm6blpGvuCXLxsybzVP2xHrmdEd2R+QbRztfO686QabEvmX5avyLndk0J35IJsTdOTgx2Jt6U+vJ7229H3o89a44e6cFntnq7IG1vcmuMplW6c+ad2X/tt1tlMd25vhhNyD/c39z8B64uG+58DAAA=",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	epochMillis := int64(1724850011017)
+	var metadataMap = map[string]interface {}{"_integration":"aws", "_type":"qbusiness.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "{\"application_id\":\"fd3048e2-f3d4-4f4a-91b6-248002364fcd\",\"event_timestamp\":\"2025-04-07T10:38:45Z\",\"log_type\":\"Message\",\"account_id\":\"280443500820\",\"conversation_id\":\"02216979-f649-48aa-823e-55d0e17b01d9\",\"system_message_id\":\"86154f78-dea7-4b72-ab25-ca971c7b9f69\",\"user_message_id\":\"779d78bd-e1a3-4494-a874-5a62f4909a82\",\"user_message\":\"helllo\",\"system_message\":\"Hello! I'm Amazon Q, an AI assistant from AWS. How can I help you today?\",\"output_metrics_is_message_blocked\":false,\"output_metrics_is_message_with_no_answer\":false}",
+		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),
+		ResourceID: map[string]interface {}{"system.aws.arn":"arn:aws:qbusiness::280443500820:application/fd3048e2-f3d4-4f4a-91b6-248002364fcd"},
+		Metadata:   metadataMap,
+	}
+
+
+
+	assert.Equal(t, expectedLMEvent.Message, logs[0].Message)
+	assert.Equal(t, expectedLMEvent.ResourceID, logs[0].ResourceID)
+	
+}
+
+func TestCloudWatchEventsSagemakerEndpoint(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/7XQT2vbQBCH4a+yzFlr7cz+m9VNpIpbaJuCdEtMUOy1vNSWhCQ3hODvXtyQQqH01vPAyzy/VzjFeW672LyMEQr4UDbl45eqrst1BRkMz32coABiZYy2SjEpyOA4dOtpOI9QQN4+z/k1cGq/xymv+t04pH6Z88O561Lf7dttlOPLMkzbg0z9Pk6x30ZJiqxUVqKWiNJ4SUaS0m/teplie4ICyuOxmdr9Pm3zJNXe+zaijZpbfmLnIIP5/DRvpzQuaehv03GJ0wzFPdTv/zRxXhTC5le2+hH75Xp/hbSDAjQHR8b54L31VrPTip01xtrgtA3WeiKD2innjLraHTIFJMhgSac4L+1phAK98ai94aDZZu9zXjf7TWwQC8uFMpljL+4/fb29ExsxDsNRklwOU2x30ojy5qaq68fPd2shRY4urMiaFXpeUWEYmcUDrKtG5GPqO/Gxab7luMIHEKSUUHDJ/mSx4qCsY0RrHaqgDCrDqMmRZ3aaApMmZMNETCb4v7OC0Wz+zQr/j4Vw2Vx+Ats9t/ukAgAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	epochMillis := int64(1724850011017)
+	var metadataMap = map[string]interface {}{"_integration":"aws", "_type":"endpoint.sagemaker.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "2025-05-13T11:58:04,687 [INFO ] pool-2-thread-4 ACCESS_LOG - /169.254.178.2:48188 \"GET /ping HTTP/1.1\" 200 0",
+		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),
+		ResourceID: map[string]interface {}{"system.aws.arn":"arn:aws:sagemaker::280443500820:endpoint/huggingface-pytorch-inference-2025-05-13-11-47-24-203"},
+		Metadata:   metadataMap,
+	}
+
+	assert.Equal(t, expectedLMEvent.Message, logs[0].Message)
+	assert.Equal(t, expectedLMEvent.ResourceID, logs[0].ResourceID)
+	
+}
+
+
+func TestCloudWatchEventsSagemakerProcessingJob(t *testing.T) {
+	cloudWatchEvent := events.CloudwatchLogsEvent{
+		AWSLogs: events.CloudwatchLogsRawData{
+			Data: "H4sIAAAAAAAA/63SyWrDMBAG4Fcxc7YS7ZYEPhjiBko3at9KKE6qGhNvWEpDCXn3kqTLtTi+Dcww3/AzB2isc0Vp88/egoFFkiev92mWJcsUQuj2rR3AAFWYcyYwVhRDCHVXLodu14OBebF389OCptjaYf40dBvrXNWWt93aXUYzP9iiAQO/Y8htqm3lUW2LoUUUU4GwQIQjLJHACCskOJ8XddkhgkjEI4oF5wJCcLu12wxV76uuvalqbwcH5gXezyXy1nlYndH0w7b+1DtA9QYGmNKSaSU4ETjSRFISEYplJCOqsaRKCEKVoJIKzBjXQktNmJQcQvBVY50vmh7M9y2CMclk+JMdGIjjOLh7XAZ5muVBlifPeRDHMRzD63jxT/4v9sB52wd4NptdjcuROJkCj0bidApcjcTZFLgeifMJ8AiP+ff0YXH59tXxC53B/ChQBAAA",
+		},
+	}
+
+	logs := parseCloudWatchLogs(cloudWatchEvent)
+	epochMillis := int64(1724850011017)
+	var metadataMap = map[string]interface {}{"_integration":"aws", "_type":"endpoint.sagemaker.amazonaws.com"}
+	expectedLMEvent := model.LogInput{
+		Message:    "=== LOG TEST START ===",
+		Timestamp: parseTime(epochMillis).String(),// time.Date(2024, time.August, 28, 18, 30, 11, 017, time.Local).String(),
+		ResourceID: map[string]interface {}{"system.aws.accountid":"280443500820", "system.cloud.category":"AWS/LMAccount"},
+		Metadata:   metadataMap,
+	}
+
+	assert.Equal(t, expectedLMEvent.Message, logs[0].Message)
+	assert.Equal(t, expectedLMEvent.ResourceID, logs[0].ResourceID)
+	
+}
+
+func parseTime(epochMillis int64) time.Time{
+	epochSeconds := epochMillis / 1000
+	nanoseconds := (epochMillis % 1000) * 1000000
+
+	parsedTime := time.Unix(epochSeconds, nanoseconds).In(time.Local)
+	return parsedTime
 }

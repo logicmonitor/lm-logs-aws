@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -8,57 +9,48 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/logicmonitor/lm-logs-sdk-go/ingest"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/logicmonitor/lm-data-sdk-go/api/logs"
+	"github.com/logicmonitor/lm-data-sdk-go/model"
+	"github.com/logicmonitor/lm-data-sdk-go/utils"
 )
 
-var lmHost, awsRegion, scrubRegex, logSource, versionID string
-var accessID, accessKey, companyName string
+var awsRegion, scrubRegex, useSecretManager, accessID, accessKey, bearerToken, companyName, companyDomain string
+var ingestTimeout int
 var debug bool
+var sessionNew *session.Session
+var s3Manager *s3.S3
 
-func getCompany() string {
-	if companyName != "" {
-		return companyName
-	}
-
-	r := regexp.MustCompile(`https://([^\.]*).logicmonitor.com`)
-	result := r.FindStringSubmatch(lmHost)
-	return result[1]
-}
-
-func SendLogs(logs []ingest.Log) {
-
-	if len(logs) == 0 {
+func SendLogs(logInput []model.LogInput, lmLog *logs.LMLogIngest) {
+	if len(logInput) == 0 {
 		return
 	}
 
-	lmIngest := ingest.Ingest{
-		CompanyName: getCompany(),
-		AccessID:    accessID,
-		AccessKey:   accessKey,
-		LogSource:   logSource,
-		VersionID:   versionID,
+	ingestResponse, err := lmLog.SendLogs(context.Background(), logInput)
+	if err != nil {
+		fmt.Println("Error in sending log to LM : ", err)
 	}
 
-	// Send logs to Logic Monitor
-	ingestResponse, err := lmIngest.SendLogs(logs)
 	handleFatalError("Request failed", err)
 
 	if debug || !ingestResponse.Success {
 		json, _ := json.Marshal(ingestResponse)
-		fmt.Printf("Response: %s\n", string(json))
-		fmt.Println(string(json))
+		log.Printf("Response: %s\n", string(json))
+		log.Println(string(json))
 	}
 }
 
-func ScrubLogsWithRegex(lmBatch []ingest.Log) {
+func ScrubLogsWithRegex(lmBatch []model.LogInput) {
 	if scrubRegex != "" {
 		reg := regexp.MustCompile(scrubRegex)
 		for _, event := range lmBatch {
-			log.Print(event.Message)
-			event.Message = reg.ReplaceAllString(event.Message, "")
-			log.Print(event.Message)
+			log.Printf("%s", fmt.Sprintf("%s", event.Message))
+			event.Message = reg.ReplaceAllString(fmt.Sprintf("%s", event.Message), "")
+			log.Printf("%s", fmt.Sprintf("%s", event.Message))
 		}
 	}
 }
@@ -66,12 +58,12 @@ func ScrubLogsWithRegex(lmBatch []ingest.Log) {
 func ParseEventType(requests interface{}) string {
 	data := requests.(map[string]interface{})
 
-	_, ok := data["awslogs"]
+	_, ok := data["awslogs"] //cloudwatch logs
 	if ok {
 		return "cloudwatch"
 	}
 
-	_, ok = data["Records"]
+	_, ok = data["Records"] //s3 and elb logs
 	if ok {
 		event := convertToS3Event(requests)
 		if strings.Contains(event.Records[0].S3.Object.Key, "elasticloadbalancing") {
@@ -79,19 +71,25 @@ func ParseEventType(requests interface{}) string {
 		}
 		return "s3"
 	}
+
+	_, ok = data["source"] // cloudWatchEvents
+	if ok {
+		return "cloudwatchEvents"
+	}
+
 	log.Fatalf("Could not extract event type")
 	return ""
 }
 
-func ExtractLogs(data interface{}) []ingest.Log {
-	logs := []ingest.Log{}
+func ExtractLogs(data interface{}) []model.LogInput {
+	logs := []model.LogInput{}
 	var err error
 	source := ParseEventType(data)
 
 	if debug {
 		json, _ := json.Marshal(data)
-		fmt.Printf("Event Recieved: %s\n", string(json))
-		fmt.Printf("Source: %s\n", source)
+		log.Printf("Event Recieved: %s\n", string(json))
+		log.Printf("Source: %s\n", source)
 	}
 
 	switch source {
@@ -105,21 +103,55 @@ func ExtractLogs(data interface{}) []ingest.Log {
 		s3Event := convertToS3Event(data)
 		logs, err = parseELBlogs(s3Event, getContentsFromS3Bucket)
 		if err != nil {
-			fmt.Printf("WARN failed to parse elb logs %s\n", err)
+			log.Printf("WARN failed to parse elb logs %s\n", err)
 		}
+	case "cloudwatchEvents":
+		cloudwatchEvents := convertToCloudWatchEvent(data)
+		logs = parseCloudWatchEvents(cloudwatchEvents)
 	}
 	return logs
 }
 
 // Lambda handler
 func handler(request interface{}) {
-	logs := ExtractLogs(request)
-	ScrubLogsWithRegex(logs)
-	SendLogs(logs)
+	ExtractEnvironmentVariables()
+	sessionNew = session.Must(session.NewSession())
+	s3Manager = s3.New(sessionNew)
+	log := ExtractLogs(request)
+	ScrubLogsWithRegex(log)
+
+	client := Client()
+	auth := utils.AuthParams{AccessID: accessID,
+		AccessKey:            accessKey,
+		BearerToken:          bearerToken}
+
+	url := fmt.Sprintf("https://%s.%s/rest", companyName, companyDomain)
+	fmt.Println("ingest URL:", url)
+	options := []logs.Option{
+		logs.WithLogBatchingDisabled(),
+		logs.WithAuthentication(auth),
+		logs.WithUserAgent("lm-logs-aws"),
+		logs.WithHTTPClient(client),
+		logs.WithEndpoint(url),
+	}
+
+	lmLog, err := logs.NewLMLogIngest(context.Background(), options...)
+	if err != nil {
+		fmt.Println("Error in initilaizing log ingest ", err)
+		return
+	}
+	SendLogs(log, lmLog)
+
+}
+
+func Client() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false, MinVersion: tls.VersionTLS12}
+	clientTransport := (http.RoundTripper)(transport)
+	return &http.Client{Transport: clientTransport, Timeout: time.Duration(ingestTimeout) * time.Second}
 }
 
 func main() {
-	ExtractEnvironmentVariables()
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
 	lambda.Start(handler)
 }

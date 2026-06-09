@@ -8,9 +8,12 @@ You will need to supply the following LogicMonitor credentials when configuring 
 * LM Access ID
 * LM Access Key
 * LM Account Name
+* LM Account Domain
+
+**NOTE**: If the LM Account Domain is not specified, it defaults to "logicmonitor.com".
 
 ### Deploying lambda using CloudFormation
-[![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=lm-forwarder&templateURL=https://logicmonitor-logs-forwarder.s3.amazonaws.com/source/latest.yaml)
+[![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=lm-forwarder&templateURL=https://logicmonitor-logs-forwarder.s3.us-west-1.amazonaws.com/source/latest.yaml)
 
 ### Deploying lambda using Terraform
 **Sample configuration**
@@ -27,6 +30,10 @@ variable "lm_company_name" {
   description = "LogicMonitor Account Name"
 }
 
+variable "lm_company_domain" {
+  description = "LogicMonitor Account Domain"
+}
+
 # LogicMonitor Logs forwarder
 resource "aws_cloudformation_stack" "lm_forwarder" {
   name         = "lm-forwarder"
@@ -36,13 +43,14 @@ resource "aws_cloudformation_stack" "lm_forwarder" {
     LMAccessId                = var.lm_access_id
     LMAccessKey               = var.lm_access_key
     LMCompanyName             = var.lm_company_name
+    LMCompanyDomain           = var.lm_company_domain
     LMRegexScrub              = ""
     PermissionsBoundaryArn    = ""
   }
-  template_url = "https://lm-logs-forwarder-v2.s3.amazonaws.com/latest.yaml"
+  template_url = "https://logicmonitor-logs-forwarder.s3.us-west-1.amazonaws.com/source/latest.yaml"
 }
 ```
-`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'lm_company_name=<lm_company_name>'`
+`terraform apply --var 'lm_access_id=<lm_access_id>' --var 'lm_access_key=<lm_access_key>' --var 'lm_company_name=<lm_company_name>' --var 'lm_company_domain=<lm_company_domain>'`
 
 ### Forwarding EC2 Instances logs
 Forward EC2 logs to CloudWatch, using the [CloudWatch Logs Agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/QuickStartEC2Instance.html). 
@@ -75,6 +83,21 @@ To send RDS logs to LogicMonitor, configure instance to send logs to cloudwatch,
 ### Forwarding Lambda logs
 To send Lambda logs to LogicMonitor, go to cloudwatch and find lambda's log group, and create subscription filter to send logs to the LM log forwarder:
 1. Go to Cloudwatch, select the lambda's log group of which you want to forward logs , under Actions > Create Lambda subscription filter
+2. In Create Lambda subscription filter , select "Lambda Function" and choose "LMLogsForwarder" (or, whatever you named the Lambda function during stack creation) and click Start streaming.
+
+### Forwarding EKS logs
+Add an "Amazon CloudWatch Observability" plugin to existing or new cluster, OR
+Forward EKS logs to cloudwatch using [application metrics to cloudwatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-metrics.html) and [application logs to cloudwatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-EKS-logs.html) using [Fluenbit](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-logs-FluentBit.html)
+
+These steps create 5 different log groups into cloudwatch as below:
+1. /aws/containerInsights/<cluster-name>/application
+2. /aws/containerInsights/<cluster-name>/host
+3. /aws/containerInsights/<cluster-name>/performance
+4. /aws/containerInsights/<cluster-name>/dataplane
+5. /aws/eks/<cluster-name>/cluster
+
+To forward EKS logs to LogicMonitor, follow these steps for the specific log group you want to send:
+1. Go to Cloudwatch, select the EKS's log group of which you want to forward logs , under Actions > Create Lambda subscription filter
 2. In Create Lambda subscription filter , select "Lambda Function" and choose "LMLogsForwarder" (or, whatever you named the Lambda function during stack creation) and click Start streaming.
 
 ### Send flow logs from EC2
@@ -143,117 +166,104 @@ As these logs are filtered from Cloudtrail, all the Cloudtrail steps needs to be
 ### Send ELB flow logs
 ELB flow logs to ECS:
 
-1. Add below lines in permissions of lambda's role policy:
-       "logs:CreateLogGroup",
-       "logs:CreateLogStream",
-       "logs:PutLogEvents"
-
-2. Add below line in the Trust Relationship part of the role in the Service tag:
-      "vpc-flow-logs.amazonaws.com"
-
-3. A Log group in cloud watch should be created with name /aws/elb/networkInterface
-
-4. Use your ELB name to search in Network interfaces page. Select that Network interface row and create a flow log. In create flow log Destination log group should be /aws/elb/networkInterface and IAM role should be the role created in 1st and 2nd step.
-
-5. Go to /aws/elb/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
-
-6. Logs will start to propagate through lambda to LogIngest.
-
 ### Send RDS logs
-RDS logs to ECS:
-
-1. Add below lines in permissions of lambda's role policy:
+1.Add below lines in permissions of lambda's role policy:
        "logs:CreateLogGroup",
        "logs:CreateLogStream",
        "logs:PutLogEvents"
 
 2. Add below line in the Trust Relationship part of the role in the Service tag:
        "vpc-flow-logs.amazonaws.com"
-
 3. A Log group in cloud watch should be created with name /aws/rds/networkInterface
-
 4. Use your RDS instance private IP address to search in Network interfaces page. Select that Network interface row and create a flow log. In create flow log Destination log group should be /aws/rds/networkInterface and IAM role should be the role created in 1st and 2nd step.
-
 5. Go to /aws/rds/networkInterface log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
-
 6. Logs will start to propagate through lambda to LogIngest.
 
-### Send Fargate logs
-Fargate logs of ECS:
+### Send Bedrock logs
+1. There are two types of logs supported by AWS Bedrock that can be sent to AWS Cloudwatch: Model invocation logging and Knowledge Base Logging
+2. For setting up the Model Invocation Logging follow [model invocation logging] (https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html). For sending logs from the Knowledge base to Cloudwatch follow [Knowledge base logging] (https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-bases-logging.html)
+3. A Log group in cloud watch should be created with name that contains "bedrock" in it.
+4. To differentiate between modelInvocation logs and knowledge-base logs, for knowledge-base logs the Log group name should contain "knowledge-base" or "vendedlogs" (this is by default present so no need to modify it). For modelinvocation logs, the logstreams by default contain string "modelinvocations" in it.
+5. Go to Log Group created by bedrock as above. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+6. Logs will start to propagate through lambda to LogIngest.
+7. The Model Invocation logs will be mapped to the Bedrock model resource created in Logicmonitor and the knowledge-base logs will be mapped to the AWS account resource created in Logicmonitor.
 
-1. Go to Task defination that you are using with your service in ECS cluster
+### Send Q Business Logs
 
-2. It should have "awslogs-group" as key and "/aws/fargate" as value in Container definition section of Task definition. If you are adding to already existing task definition than create new revision of Task definition and update Service in ECS cluster. Else if creating a new Task defination then make sure to attach it to Service in ECS cluster.
+1. **Types of Logs Supported by AWS Q Business:**
+   - **User Conversation Logs:**
+     - **Content:** Records of user interactions, including messages and responses.
+     - **Purpose:** Analyze user behavior, identify common queries, and assess response quality.
+   - **Feedback Logs:**
+     - **Content:** User feedback on responses, such as thumbs-up or thumbs-down ratings.
+     - **Purpose:** Gauge user satisfaction and identify areas for improvement.
+   - **API Call Logs:**
+     - **Content:** Details of API requests made to Amazon Q Business services.
+     - **Purpose:** Audit API usage, monitor access patterns, and troubleshoot issues.
 
-3. Go to /aws/fargate log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+2. **Steps to Enable Log Streaming to Amazon CloudWatch:**
+   - **Amazon CloudWatch Logs Setup:**
+     - In the **Amazon Q Business console**, navigate to your application environment.
+     - Go to **Enhancements > Admin Controls and Guardrails**.
+     - Under **Log delivery**, choose **Add** and select **Amazon CloudWatch Logs**.
+     - Specify the **destination log group** , make sure to add **"/aws/vendedlogs/qbusiness/"** to the *Destination Log Group*  and configure additional settings as needed.
+     - **Reference:** [Enabling Amazon Q Business user conversation logging](https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/cw-logs-enable-logging.html)
 
-4. Logs will start to propagate through lambda to LogIngest.
-
-Fargate logs from EKS:
-
-1. Create a dedicated Kubernetes namespace named aws-observability.
-
-2. Save the following contents to a file named aws-observability-namespace.yaml on your computer. The value for name must be aws-observability and the aws-observability: enabled label is required.
-
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: aws-observability
-  labels:
-    aws-observability: enabled
-
-
-3. Create the namespace.
-
-Save the following contents to a file named aws-logging-cloudwatch-configmap.yaml. Replace region-code with the AWS Region. The parameters under [OUTPUT] are required.
-
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: aws-logging
-  namespace: aws-observability
-data:
-  output.conf: |
-    [OUTPUT]
-        Name cloudwatch_logs
-        Match   *
-        region region-code
-        log_group_name fluent-bit-cloudwatch
-        log_stream_prefix from-fluent-bit-
-        auto_create_group true
-        log_key log
- 
-  parsers.conf: |
-    [PARSER]
-        Name crio
-        Format Regex
-        Regex ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>P|F) (?<log>.*)$
-        Time_Key    time
-        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
-   
-  filters.conf: |
-     [FILTER]
-        Name parser
-        Match *
-        Key_name log
-        Parser crio
-
-4. Apply the manifest to your cluster.
-
-  kubectl apply -f aws-logging-cloudwatch-configmap.yaml
-
-5. Download the CloudWatch IAM policy to your computer. You can also view the policy on GitHub.
-  curl -o permissions.json https://raw.githubusercontent.com/aws-samples/amazon-eks-fluent-logging-examples/mainline/examples/fargate/cloudwatchlogs/permissions.json
-
-6. Create an IAM policy from the policy file you downloaded in a previous step.
-     aws iam create-policy --policy-name eks-fargate-logging-policy --policy-document file://permissions.json
-
-7. Attach the IAM policy to the pod execution role specified for your Fargate profile. Replace 111122223333 with your account ID.
-  aws iam attach-role-policy \
---policy-arn arn:aws:iam::111122223333:policy/eks-fargate-logging-policy \
---role-name your-pod-execution-role
-
-8. Go to /aws/fargate log group. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+3. **Sending logs from Cloudwatch to LM Portal**
+    - In the **Log Group** created for QBusiness logs, go to Subscription *Filter -> Create -> Create Lambda Subscription Filter*
+    - In lambda function select *“LMLogsForwarder”* (or whatever you named the Lambda function during stack creation) and provide Subscription filter name.
+    - Specify Subscription filter name, and click start streaming.
 
 
-9. Logs will start to propagate through lambda to LogIngest.
+<!-- ### Send Sagemaker logs
+1. There are three types of logs which we are supporting for AWS Sagemaker, that can be sent to AWS Cloudwatch: 
+    -Training Job Logs
+    -Processing Job Logs
+    -Endpoint Logs
+2. For setting these up we need to create the respective instances and we get respective groups created in cloudwatch, where the logs are sent.
+   Its `aws/Sagemaker/TrainingJobs`, `aws/Sagemaker/ProcessingJobs` and  `aws/Sagemaker/<name of endpoint instance>`.
+3. Go to Log Group created by Sagemaker as above. In Actions > Subscription filters > Create lambda subscription filter. In lambda function select “LMLogsForwarder” (or whatever you named the Lambda function during stack creation) and provide Subscription filter name. Hit Start Streaming.
+3. Logs will start to propagate through lambda to LogIngest.
+5. The Endpoint logs will be mapped to the Endpoint resource discovered in Logicmonitor and the TrainingJob and ProcessingJob logs will be mapped to the AWS account resource created in Logicmonitor. -->
+
+
+### Send Sagemaker logs
+
+To send AWS SageMaker logs to AWS CloudWatch, three log types are supported: ` Training Job Logs, Processing Job Logs, and Endpoint Logs `. For each log type, you need to create the corresponding instances, which will generate CloudWatch log groups where the logs will be sent. These log groups include:
+
+`aws/Sagemaker/TrainingJobs`
+`aws/Sagemaker/ProcessingJobs`
+`aws/Sagemaker/<endpoint_name>`
+
+To set up log forwarding, follow these steps:
+
+  1. Navigate to the log group created by SageMaker in CloudWatch.
+  2. Go to Actions > Subscription Filters > Create Lambda Subscription Filter.
+  3. In the Lambda function dropdown, select the function you created (e.g., “LMLogsForwarder”).
+  4. Provide a name for the subscription filter and click Start Streaming.
+
+The logs will now flow through the Lambda function to LogIngest. SageMaker endpoint logs will be mapped to the corresponding endpoint resource in LogicMonitor, while the Training and Processing Job logs will be mapped to the AWS account resource created in LogicMonitor.
+
+### Send Q Business API Call Logs using cloudtrail
+
+To send API call logs from AWS Q Business to LogicMonitor using cloudtrail, follow these steps: 
+1. **Enable CloudTrail for Management Events:**
+   - Open the AWS Console > CloudTrail > Trails
+   - Click Create trail or edit an existing trail
+   - Under Management events:
+     - Enable Read and Write management events 
+     - This will capture all AwsApiCall events — including those from **qbusiness.amazonaws.com**
+2. **Forward Events to CloudWatch Logs**
+   - In the same CloudTrail trail configuration, under CloudWatch Logs:
+     - Enable CloudWatch Logs
+     - Specify a log group name (e.g., `/aws/cloudtrail/qbusiness`)
+     - Create or select an IAM role that allows CloudTrail to publish logs to CloudWatch
+3. **Create Lambda Subscription Filter**
+   - Go to the CloudWatch Logs console
+   - Select the log group created in step 2 (e.g., `/aws/cloudtrail/qbusiness`)
+   - Click on Actions > Create Lambda subscription filter
+   - Choose the Lambda function you created (e.g., “LMLogsForwarder”)
+   - Provide a name for the subscription filter and click Start streaming
+4. **Verify Logs in LogicMonitor**
+   - After a few minutes, check your LogicMonitor portal to see if the API call logs from AWS Q Business are being ingested correctly.
+   - The logs should be associated with the AWS account resource created in your LogicMonitor portal.
